@@ -1,0 +1,50 @@
+name: Release
+
+# The linker family's release pipeline, called by each plugin's own release.yml.
+#
+# It opens a draft with the built assets already attached and leaves publishing to a human.
+# That order matters: a release published first and filled in afterwards is briefly live
+# with whatever assets it had, and Obsidian's review checks it in exactly that window. The
+# assets must also be the ones CI built — a hand-attached file has a different digest (a
+# working copy keeps CRLF, the repo is LF) and its attestation won't verify.
+
+on:
+  workflow_call:
+    inputs:
+      assets:
+        description: Files to attest and attach, one per line.
+        type: string
+        default: |
+          main.js
+          manifest.json
+          styles.css
+      node-version:
+        type: string
+        default: "20"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ inputs.assets }}
+
+      - name: Open a draft release with the assets attached
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASSETS: ${{ inputs.assets }}
+        # $ASSETS unquoted on purpose: the newline-separated list becomes one arg per file.
+        run: gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" $ASSETS
