@@ -4,9 +4,9 @@
 //
 //   node src/shared/branding/make-plates.mjs [config.mjs]
 //
-// The config path defaults to docs/store-plates.config.mjs, resolved from the current
-// working directory (the plugin root). Set PLATES_BROWSER to a Chromium binary to
-// override auto-detection. See BRANDING.md for the config shape.
+// The config path defaults to docs/branding.config.mjs, resolved from the current working
+// directory (the plugin root). Set PLATES_BROWSER to a Chromium binary to override
+// auto-detection. See BRANDING.md for the config shape.
 
 import { existsSync, mkdirSync, statSync, readFileSync, writeFileSync, rmSync } from 'fs';
 import { spawn } from 'child_process';
@@ -17,7 +17,7 @@ import { renderPlate } from './plate-template.mjs';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const cwd = process.cwd();
-const configArg = process.argv[2] || 'docs/store-plates.config.mjs';
+const configArg = process.argv[2] || 'docs/branding.config.mjs';
 const configPath = resolve(cwd, configArg);
 
 if (!existsSync(configPath)) {

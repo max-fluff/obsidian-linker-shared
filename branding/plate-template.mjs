@@ -4,10 +4,10 @@
 // stays easy to test and reuse. make-plates.mjs feeds it a config and rasterizes the
 // result with headless Chromium.
 
+import { esc, MONO, markHtml } from './common.mjs';
+
 export const W = 1200;
 export const H = 800;
-
-const MONO = "ui-monospace,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace";
 
 // Fixed scatter slots [x, y, fontPx, opacity], hugging the edges so the centered
 // screenshot stays clear. Provided words are mapped onto slots, cycling if fewer.
@@ -18,33 +18,12 @@ const SCATTER = [
   [1096, 356, 20, 0.06], [30, 380, 20, 0.06],
 ];
 
-const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-
 function scatterHtml(tokens) {
   if (!tokens || !tokens.length) return '';
   return SCATTER.map(([x, y, s, o], i) => {
     const t = tokens[i % tokens.length];
     return `<span class="tok" style="left:${x}px;top:${y}px;font-size:${s}px;opacity:${o}">${esc(t)}</span>`;
   }).join('\n');
-}
-
-// mark: { kind: 'svg', svg } — raw inline SVG (sized to 30px tall via .mark-glyph);
-//       { kind: 'glyph', text, mono } — a text mark like "[{}]" (monospace by default).
-function markHtml(mark) {
-  if (!mark) return '';
-  if (mark.kind === 'svg') return mark.svg;
-  const fam = mark.mono === false ? 'inherit' : MONO;
-  return `<span class="mark-glyph-text" style="font-family:${fam}">${esc(mark.text || '')}</span>`;
-}
-
-// wordmark: { text, underline } — if `underline` is a leading substring of `text`, it
-// gets the dotted accent underline (e.g. "Glossary" in "Glossary Linker").
-function wordmarkHtml(wm) {
-  if (!wm || !wm.text) return '';
-  if (wm.underline && wm.text.startsWith(wm.underline)) {
-    return `<span class="hl">${esc(wm.underline)}</span>${esc(wm.text.slice(wm.underline.length))}`;
-  }
-  return esc(wm.text);
 }
 
 export function renderPlate(brand, plate, dataUri) {
@@ -65,7 +44,6 @@ export function renderPlate(brand, plate, dataUri) {
   .mark-glyph { height:30px; width:auto; display:block; }
   .mark-glyph-text { font-weight:700; font-size:30px; color:#fff; }
   .mark .name { font-size:22px; font-weight:700; color:#f4f4f6; letter-spacing:.2px; }
-  .mark .name .hl { border-bottom:3px dotted ${brand.accent}; padding-bottom:2px; }
   .stage { position:absolute; top:96px; bottom:150px; left:0; right:0;
     display:flex; align-items:center; justify-content:center; z-index:1; }
   .shot { border-radius:12px; border:1px solid rgba(255,255,255,.09);
@@ -77,7 +55,7 @@ export function renderPlate(brand, plate, dataUri) {
   .caption p { font-size:21px; font-weight:400; color:#c2bfd2; line-height:1.4; }
 </style></head><body>
   ${scatterHtml(brand.tokens)}
-  <div class="mark">${markHtml(brand.mark)}<span class="name">${wordmarkHtml(brand.wordmark)}</span></div>
+  <div class="mark">${markHtml(brand.mark)}<span class="name">${esc((brand.wordmark && brand.wordmark.text) || '')}</span></div>
   <div class="stage"><img class="shot" src="${dataUri}"></div>
   <div class="caption"><h2>${esc(plate.title)}</h2><p>${esc(plate.caption)}</p></div>
 </body></html>`;

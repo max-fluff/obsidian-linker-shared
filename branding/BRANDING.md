@@ -2,12 +2,12 @@
 
 Shared look for the linker plugin family (Code Linker, Glossary Linker, …). Every plugin
 ships the same *kinds* of assets with the same palette and structure, so a new plugin only
-has to swap its mark, motif words, and accent. This folder also holds `make-plates.mjs`,
-the generator for the store screenshot backdrops.
+has to swap its mark, motif words, and copy. This folder also holds the generators that
+build those assets from one config per plugin: `make-banner.mjs` and `make-plates.mjs`.
 
 ## Palette
 
-One palette across the family; only the **accent** shifts per plugin.
+One palette across the whole family — the plugins differ by mark and motif, not colour.
 
 | Token | Value | Used for |
 | --- | --- | --- |
@@ -17,7 +17,6 @@ One palette across the family; only the **accent** shifts per plugin.
 | Motif | `#b6a6e8` | the faint token/word cloud |
 | Heading text | `#f4f4f6` | wordmark, plate titles |
 | Subtle text | `#c2bfd2` | taglines, captions |
-| Accent | plugin-specific | dotted underline, highlights — Glossary `#a68cff`, Code `#7c6cf0` |
 
 Type is the system UI stack (`-apple-system, 'Segoe UI', Roboto, …`); code/mono motifs use
 `ui-monospace, 'SF Mono', Menlo, Consolas, monospace`.
@@ -39,34 +38,45 @@ it everywhere: icon, banner, and store-plate corner mark.
 All vector (SVG) except the raw screenshots — SVG stays crisp at any size and is easy to
 diff and re-theme. Live in each plugin's `docs/images/`.
 
-| File | Size (viewBox) | What it is |
-| --- | --- | --- |
-| `icon.svg` | 512×512 | store/app icon: `#6f5bd0` rounded square (`rx=116`), white mark centered at ~30% width |
-| `icon-mono.svg` | 100×100 | monochrome mark in `currentColor`, no tile — for one-colour contexts |
-| `banner.svg` | 960×260 | README hero card |
-| `social-preview.svg` | 1280×640 | GitHub "social preview" image (Settings → General) |
+| File | Size (viewBox) | What it is | Source |
+| --- | --- | --- | --- |
+| `icon.svg` | 512×512 | store/app icon: `#6f5bd0` rounded square (`rx=116`), white mark centered at ~30% width | hand-written |
+| `icon-mono.svg` | 100×100 | monochrome mark in `currentColor`, no tile — for one-colour contexts | hand-written |
+| `banner.svg` | 960×260 | README hero card | `npm run banner` |
+| `social-preview.svg` | 1280×640 | GitHub "social preview" image (Settings → General) | `npm run banner` |
 
 ### Icon
 
-Rounded square, `rx = 116/512` of the side. Mark centered, white, roughly a third of the
-tile so it survives downscaling to 16px. The mono variant drops the tile and paints the
-mark in `currentColor` so Obsidian can tint it.
+The two icons are hand-written — they're small and rarely change. Rounded square,
+`rx = 116/512` of the side. Mark centered, white, roughly a third of the tile so it
+survives downscaling to 16px. The mono variant drops the tile and paints the mark in
+`currentColor` so Obsidian can tint it.
 
-### Banner & social preview
+### Banner & social preview (`make-banner.mjs`)
 
-Same recipe at two aspect ratios:
+Both are **generated** from the brand config — no browser involved, SVG is just built as
+text:
 
-1. Vertical gradient `#27243d → #191826` on a rounded card (`rx=24` on the banner; full
-   bleed on the social image).
-2. A faint **motif cloud** — short strings scattered at low opacity (`0.06–0.12`) in the
-   plugin's own vocabulary: Code Linker uses file extensions and language names in the mono
-   stack; Glossary Linker uses the word "word" in several languages, in the sans stack.
-3. A **focal scrim** (a soft radial `ellipse`) behind the wordmark on busy layouts, so the
-   text stays legible over the cloud.
-4. **Wordmark** (700, `#f4f4f6`) + **tagline** (`#c2bfd2`), and the **mark** placed to one
-   side. Glossary underlines its first word with the dotted accent.
+```sh
+npm run banner            # → docs/images/banner.svg + social-preview.svg
+```
 
-Keep the tagline identical to `manifest.json`'s description so the family reads consistently.
+The two canvases share one recipe:
+
+1. Vertical gradient `gradient[0] → gradient[1]` on a rounded card (`rx=24` on the banner;
+   full bleed on the social image).
+2. A faint **motif cloud** — `brand.tokens` cycled onto fixed slots at low opacity
+   (`0.06–0.12`), in the mono or sans stack per `tokenMono`.
+3. A **focal scrim** (a soft radial `ellipse`) behind the banner's wordmark, so the text
+   stays legible over the cloud.
+4. **Wordmark** (700, `#f4f4f6`) + **tagline** (`#c2bfd2`), and the **mark** — flush right
+   on the banner, centered above the wordmark on the social image.
+
+Keep `brand.tagline` identical to `manifest.json`'s description so the family reads
+consistently.
+
+Layout constants (slot positions, mark box, type sizes) live in `banner-template.mjs` —
+the config supplies only content and colour, so every plugin's header lines up.
 
 ## Screenshots
 
@@ -92,27 +102,33 @@ cloud, corner mark + wordmark, and a title/caption — and rasterizes it with he
 Chromium (Chrome or Edge; auto-detected, or set `PLATES_BROWSER`).
 
 ```sh
-npm run plates            # reads docs/store-plates.config.mjs
+npm run plates            # reads docs/branding.config.mjs
 npm run plates -- docs/other.config.mjs
 ```
 
 Output lands in `docs/images/store/`, committed alongside the repo and regenerable — re-run
 whenever a source screenshot or caption changes, then upload the set to the store listing.
 
-### Config (`docs/store-plates.config.mjs`)
+Canvas size and layout (mark position, caption band, screenshot max-box) live in
+`plate-template.mjs`; the config only supplies content and colour.
+
+## The config (`docs/branding.config.mjs`)
+
+One file per plugin, read by **both** generators — so a new plugin's whole visual identity
+is this object.
 
 ```js
 export default {
-  imagesDir: 'docs/images',        // where the raw screenshots are (default)
+  imagesDir: 'docs/images',        // raw screenshots in, banners out (default)
   outDir: 'docs/images/store',     // where plates are written (default)
   brand: {
     gradient: ['#27243d', '#191826'],
-    accent: '#7c6cf0',
     tokenColor: '#b6a6e8',
     tokenMono: true,               // monospace motif (Code) vs sans (Glossary)
-    tokens: ['.cs', 'TypeScript', /* … */],   // scattered onto fixed slots, cycled
-    mark: { kind: 'glyph', text: '[{}]' },     // or { kind: 'svg', svg: '<svg…>' }
-    wordmark: { text: 'Code Linker' },         // add underline:'Word' for the dotted accent
+    tokens: ['.cs', 'TypeScript', /* … */],   // cycled onto fixed slots
+    mark: { kind: 'glyph', text: '[{}]' },
+    wordmark: { text: 'Code Linker' },
+    tagline: 'Autocomplete code references, jump to the exact line.',
   },
   plates: [
     { src: 'suggest.png', title: 'Autocomplete code references',
@@ -125,22 +141,26 @@ export default {
 | Field | Notes |
 | --- | --- |
 | `brand.gradient` | `[top, bottom]` backdrop colours |
-| `brand.accent` | dotted-underline colour (only visible when `wordmark.underline` is set) |
 | `brand.tokenColor` / `tokenMono` | motif-cloud colour and monospace-vs-sans |
-| `brand.tokens` | words/strings for the cloud; mapped onto 14 fixed slots, cycling if fewer |
-| `brand.mark` | `{ kind:'glyph', text, mono? }` or `{ kind:'svg', svg }` |
-| `brand.wordmark` | `{ text, underline? }` — `underline` must be a leading substring of `text` |
+| `brand.tokens` | strings for the cloud; cycled onto fixed slots (14 per plate, 12 per banner) |
+| `brand.mark` | `{ kind:'glyph', text, mono? }` — a text mark; or `{ kind:'svg', viewBox, body }` — vector body in its own coordinate space, scaled and centered by each renderer |
+| `brand.wordmark` | `{ text }` — drawn beside the mark |
+| `brand.tagline` | one line under the wordmark; keep it equal to `manifest.json`'s description |
 | `plates[]` | `{ src, title, caption }` — `src` is a filename in `imagesDir` |
 
-Canvas size and layout (mark position, caption band, screenshot max-box) live in
-`plate-template.mjs`; the config only supplies content and colour.
+Defining `mark` once as data (rather than as ready-made markup) is what lets the same glyph
+render as HTML in a plate and as vector in a banner.
 
 ## Adding a new plugin to the family
 
-1. Pick an accent and a white mark; write `icon.svg`, `icon-mono.svg`, `banner.svg`,
-   `social-preview.svg` from the recipes above.
-2. Capture feature screenshots into `docs/images/`, embed them in the README.
-3. Copy a `docs/store-plates.config.mjs`, swap `accent`, `tokens`, `mark`, `wordmark`, and
-   the `plates` list; add `"plates": "node src/shared/branding/make-plates.mjs"` to
-   `package.json`.
-4. `npm run plates`, then upload `docs/images/store/*` to the store listing.
+1. Copy a `docs/branding.config.mjs` and swap `tokens`, `mark`, `wordmark`, `tagline`,
+   and the `plates` list.
+2. Add both scripts to `package.json`:
+   ```json
+   "plates": "node src/shared/branding/make-plates.mjs",
+   "banner": "node src/shared/branding/make-banner.mjs"
+   ```
+3. `npm run banner` — the README header and social preview are done.
+4. Hand-write `icon.svg` / `icon-mono.svg` from the icon recipe, reusing the same mark.
+5. Capture feature screenshots into `docs/images/`, embed them in the README, list them in
+   `plates`, then `npm run plates` and upload `docs/images/store/*` to the store listing.
