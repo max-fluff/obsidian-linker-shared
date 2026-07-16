@@ -9,6 +9,10 @@ plugin bundle by esbuild at build time, so nothing here ships on its own.
 - `i18n.js` — interface localization engine; the plugin injects its own locale set via `initI18n(locales)`
 - `folder-list.js` — reusable folder-set settings editor, parameterized by CSS prefix and suggest source
 - `build.mjs` — shared esbuild driver
+- `branding/` — visual-asset conventions ([`BRANDING.md`](branding/BRANDING.md)) and `make-plates.mjs`, the store-screenshot backdrop generator
+
+The runtime modules are bundled into `main.js`; `build.mjs` and `branding/` are dev tooling
+that never ships.
 
 ## Working on a plugin
 
