@@ -5,22 +5,28 @@
 // The binding lives in the title, never in the link text, so the text stays prose — call a
 // link "the service" and it still tracks. It also keeps the slot ours: a title without a
 // known token is the reader's own tooltip, so a binding that no longer resolves can only
-// mean the code changed. That is what lets a lost binding be reported without crying wolf.
+// mean the target changed. That is what lets a lost binding be reported without crying wolf.
 //
-// Anchors are requirements and combine by intersection, so you pin as tightly as you mean:
-//   sym:Name    — something called Name sits there
-//   kind:class  — what sits there is a class (an interface, a method…)
-//   line:<hash> — the line's trimmed text still hashes to <hash>
-// Resolving them needs an index and belongs to the plugin; everything here is text.
+// Anchors are requirements and combine by intersection. Each plugin uses the ones it can
+// resolve: sym/kind/line for code (a declaration on a line), sec for documents (a section
+// in a PDF outline). Resolving them needs an index and belongs to the plugin; everything
+// here is text. The stored position — a line, a page — is the plugin's too; bindStateFrom
+// works in plain numbers.
 
-const TOKEN = /^(sym|kind|line):(.+)$/;
+const ANCHORS = { sym: 'sym', kind: 'kind', sec: 'sec', line: 'hash' };
+const TOKEN = /^(sym|kind|sec|line):(.+)$/;
 
-// The line a url points at: the last :<digits> before the end. Relative paths carry no
-// colon, so it's unambiguous. Not global, so replace() only touches that one number.
-const LINE_RE = /:(\d+)(?=\D*$)/;
+const LINE_RE = /:(\d+)(?=\D*$)/;   // the line a code url points at
+const PAGE_RE = /#page=(\d+)/i;     // the page a document url points at
 
-// FNV-1a (32-bit), base36 — short enough to sit in a title unnoticed. It keys a map built
-// per file, so the only collisions that could matter are within one file.
+// A value shares the title's space, and the title sits in a markdown destination — so a
+// space, a quote or a paren in a section name would break parsing. Escape just those (and %
+// itself) as %XX; letters, digits, Cyrillic, apostrophes stay readable. Reversible, so any
+// name round-trips.
+const encodeValue = (v) => String(v).replace(/[%"()\s]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'));
+const decodeValue = (v) => v.replace(/%([0-9A-Fa-f]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+
+// FNV-1a (32-bit), base36 — short enough to sit in a title unnoticed.
 function hashLine(text) {
   let h = 0x811c9dc5;
   const s = String(text || '').trim();
@@ -31,39 +37,38 @@ function hashLine(text) {
   return h.toString(36);
 }
 
-// The binding a title declares as { sym, kind, hash }, or null when the title isn't ours.
-// Every word must be a known token: one stray word means it's a tooltip, and a tooltip
-// must never be read as a binding that went missing.
+// The binding a title declares, or null when it isn't ours. Every word must be a known
+// token: one stray word means it's a tooltip, which must never read as a binding gone missing.
 function parseBinding(title) {
   const s = String(title || '').trim();
   if (!s) return null;
-  const b = { sym: '', kind: '', hash: '' };
+  const b = { sym: '', kind: '', sec: '', hash: '' };
   for (const word of s.split(/\s+/)) {
     const m = TOKEN.exec(word);
     if (!m) return null;
-    b[m[1] === 'line' ? 'hash' : m[1]] = m[2];
+    b[ANCHORS[m[1]]] = decodeValue(m[2]);
   }
-  return b.sym || b.kind || b.hash ? b : null;
+  return b.sym || b.kind || b.sec || b.hash ? b : null;
 }
 
-// Written back out. Order is fixed so re-pinning doesn't churn the text.
+// Written back out, order fixed so re-pinning doesn't churn the text.
 function formatBinding(b) {
   const parts = [];
-  if (b.sym) parts.push('sym:' + b.sym);
-  if (b.kind) parts.push('kind:' + b.kind);
+  if (b.sym) parts.push('sym:' + encodeValue(b.sym));
+  if (b.kind) parts.push('kind:' + encodeValue(b.kind));
+  if (b.sec) parts.push('sec:' + encodeValue(b.sec));
   if (b.hash) parts.push('line:' + b.hash);
   return parts.join(' ');
 }
 
-// What the lines a binding still matches say about the line it's stored at: null when it
-// sits on one of them, else where it moved to, or that it's gone. Sitting on any match is
-// enough — two same-named methods need no telling apart. Code moves in small hops, so the
-// nearest match is the one it moved to; exact certainty isn't on offer.
-function bindStateFrom(hits, storedLine) {
-  if (hits.includes(storedLine)) return null;
+// Where the matches leave a binding stored at `stored`: null when it sits on one, the
+// nearest match when it drifted, or broken when nothing matches. Sitting on any match is
+// enough — two same-named spots need no telling apart.
+function bindStateFrom(hits, stored) {
+  if (hits.includes(stored)) return null;
   if (!hits.length) return { state: 'broken' };
-  const line = hits.reduce((a, n) => (Math.abs(n - storedLine) < Math.abs(a - storedLine) ? n : a));
+  const line = hits.reduce((a, n) => (Math.abs(n - stored) < Math.abs(a - stored) ? n : a));
   return { state: 'stale', line };
 }
 
-module.exports = { LINE_RE, hashLine, parseBinding, formatBinding, bindStateFrom };
+module.exports = { LINE_RE, PAGE_RE, hashLine, parseBinding, formatBinding, bindStateFrom };
