@@ -29,9 +29,19 @@ comes from the tile, never the mark.
 - **Code Linker** — the text glyph `[{}]` in the monospace stack, weight 700.
 - **Glossary Linker** — a white bar with a dashed underline (a highlighted term): a filled
   `rect` plus a `stroke-dasharray` line.
+- **Reference Linker** — a dog-eared sheet inside square brackets: stroked `path`s, the
+  bracket form of `[{}]` holding a document instead of code.
 
 A new plugin picks a glyph in the same spirit (simple, geometric, legible tiny) and reuses
 it everywhere: icon, banner, and store-plate corner mark.
+
+A text mark scales for free; a **stroked** one does not — its counters close up as it
+shrinks, and a shape that reads at 512 can be a blob at 68. Check every enclosed gap
+against the stroke before shipping. Reference Linker's dog-ear is the worked example: the
+fold's corner sits `f/√2` from the diagonal cut, so with a stroke of `s` the visible gap is
+`f/√2 − s`. At `f=34, s=26` that is negative — the two strokes merge and the fold fills in
+solid. It ships at `f=58` for a 15px gap. Rasterize the mark at 68px (banner) and 16px
+(icon) and look at it; the arithmetic only tells you where to look.
 
 ## Assets every plugin ships
 
@@ -72,8 +82,12 @@ The two canvases share one recipe:
 4. **Wordmark** (700, `#f4f4f6`) + **tagline** (`#c2bfd2`), and the **mark** — flush right
    on the banner, centered above the wordmark on the social image.
 
-Keep `brand.tagline` identical to `manifest.json`'s description so the family reads
-consistently.
+`brand.tagline` is the short form of `manifest.json`'s description — same promise, one
+line. The manifest runs long (a sentence the store can wrap); the banner draws its tagline
+at 23px on a single line that has to clear the mark at x=790, so anything past ~60
+characters collides. Code Linker ships 52 characters against a 128-character manifest, and
+Glossary Linker 48 against 129 — match that ratio rather than the exact wording, and keep
+the same verb the manifest opens with so the family still reads as one voice.
 
 Layout constants (slot positions, mark box, type sizes) live in `banner-template.mjs` —
 the config supplies only content and colour, so every plugin's header lines up.
@@ -145,7 +159,7 @@ export default {
 | `brand.tokens` | strings for the cloud; cycled onto fixed slots (14 per plate, 12 per banner) |
 | `brand.mark` | `{ kind:'glyph', text, mono? }` — a text mark; or `{ kind:'svg', viewBox, body }` — vector body in its own coordinate space, scaled and centered by each renderer |
 | `brand.wordmark` | `{ text }` — drawn beside the mark |
-| `brand.tagline` | one line under the wordmark; keep it equal to `manifest.json`'s description |
+| `brand.tagline` | one line under the wordmark; the short form of `manifest.json`'s description, ~60 characters max |
 | `plates[]` | `{ src, title, caption }` — `src` is a filename in `imagesDir` |
 
 Defining `mark` once as data (rather than as ready-made markup) is what lets the same glyph
