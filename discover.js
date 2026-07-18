@@ -110,6 +110,12 @@ function yieldedCandidates(app, self, text) {
         id: peer.id,
         source: peer.displayName || peer.id,
         open: (sourcePath, newTab) => { if (typeof peer.open === 'function') peer.open(m.target, sourcePath, newTab); },
+        // The peer previews its own target: only it knows whether that means a note, a
+        // heading anchor or something else. A peer too old to publish this simply has no
+        // preview in the list, which is the behaviour it had before the list existed.
+        hover: (event, targetEl, sourcePath, hoverParent) => {
+          if (typeof peer.hover === 'function') peer.hover(m.target, event, targetEl, sourcePath, hoverParent);
+        },
       });
     }
   }
@@ -119,6 +125,51 @@ function yieldedCandidates(app, self, text) {
 // Those of `candidates` that cover [s, e).
 function candidatesFor(candidates, s, e) {
   return candidates.filter((c) => c.start < e && c.end > s);
+}
+
+// What the other linkers would suggest for a typed word.
+//
+// Obsidian hands the autocomplete popup to the FIRST registered suggester whose onTrigger
+// returns a context and never asks the rest, so a word both linkers know used to show only
+// one plugin's answers — and which one depended on plugin load order, which the reader
+// cannot see or change.
+//
+// The fix is not to fight over the slot but to fill it completely: whoever is asked first
+// claims it and adds everyone else's candidates to its own list. Deciding the winner by
+// precedence instead would be tidier on paper and worse in practice — the higher-ranked
+// plugin can decline for reasons only it knows (out of scope, cursor inside a protected
+// range, its own suggest setting off), and a plugin that stood aside for it would leave the
+// reader with no popup at all.
+//
+// Unlike the span candidates in yieldedCandidates, these carry a live `insert` closure: a
+// suggestion is used within one popup, not parked in a DOM attribute to be resolved later.
+function peerSuggestions(app, self, query) {
+  const out = [];
+  for (const peer of discoverLinkers(app)) {
+    if (peer.id === self.id || typeof peer.suggest !== 'function') continue;
+    let items;
+    // A peer that throws costs us its suggestions, not our own popup.
+    try { items = peer.suggest(String(query || '')) || []; } catch (e) { items = []; }
+    for (const it of items) {
+      if (!it || typeof it.label !== 'string') continue;
+      out.push({
+        label: it.label,
+        note: it.note || '',
+        target: it.target,
+        // What the inserted link should read. null (or absent) means "keep whatever the
+        // reader typed" — the peer says which, because only it knows whether its candidate
+        // matched an inflection of the typed word or completed a prefix of it.
+        display: it.display == null ? null : it.display,
+        id: peer.id,
+        source: peer.displayName || peer.id,
+        precedence: peer.precedence || 0,
+        // The peer builds its own link text: nobody else should have to know whether a
+        // target is a term title or a File#Heading.
+        insert: (display, inTable) => (typeof peer.linkFor === 'function' ? peer.linkFor(it.target, display, inTable) : null),
+      });
+    }
+  }
+  return out;
 }
 
 // Whether a sibling would also offer `kind` on this text — used to decide whether a menu
@@ -156,4 +207,4 @@ function siblingLinkers(app, self) {
 // Ordering the family and the settings control for it live in ./precedence.js — this file
 // answers "who wins here?", that one answers "where do we sit, and how do we move?".
 
-module.exports = { LINKER_API, discoverLinkers, outranks, foreignRanges, overlaps, ownedMatches, yieldedCandidates, candidatesFor, peersOffering, siblingLinkers };
+module.exports = { LINKER_API, discoverLinkers, outranks, foreignRanges, overlaps, ownedMatches, yieldedCandidates, candidatesFor, peerSuggestions, peersOffering, siblingLinkers };
