@@ -16,6 +16,30 @@
 const ANCHORS = { sym: 'sym', kind: 'kind', sec: 'sec', line: 'hash' };
 const TOKEN = /^(sym|kind|sec|line):(.+)$/;
 
+// Who a binding belongs to. The anchor sets are already disjoint in practice — code writes
+// sym/kind/line, documents write sec, and neither has ever written the other's — so the
+// owner reads straight off the anchors and no owner token is needed. That matters: the
+// format doesn't change, so notes written before any of this keep working untouched.
+//
+// A binding mixing both sides is owned by nobody. Nothing produces one today; treating it
+// as unclaimed keeps a plugin from acting on a binding it can't fully resolve, which is
+// the failure that made two installed plugins mark each other's links broken.
+const OWNERS = { code: ['sym', 'kind', 'hash'], reference: ['sec'] };
+
+function ownerOf(binding) {
+  if (!binding) return null;
+  const claimed = Object.keys(OWNERS).filter((owner) => OWNERS[owner].some((anchor) => binding[anchor]));
+  return claimed.length === 1 ? claimed[0] : null;
+}
+
+// The owner a markdown title declares, or null when the title is a reader's tooltip, an
+// empty binding, or a mix no single plugin owns.
+const bindingOwner = (title) => ownerOf(parseBinding(title));
+
+// Whether `title` carries a binding this plugin may act on. The guard every consumer
+// should reach for instead of a bare parseBinding() truthiness check.
+const ownsBinding = (title, owner) => bindingOwner(title) === owner;
+
 const LINE_RE = /:(\d+)(?=\D*$)/;   // the line a code url points at
 const PAGE_RE = /#page=(\d+)/i;     // the page a document url points at
 
@@ -71,4 +95,4 @@ function bindStateFrom(hits, stored) {
   return { state: 'stale', line };
 }
 
-module.exports = { LINE_RE, PAGE_RE, hashLine, parseBinding, formatBinding, bindStateFrom };
+module.exports = { LINE_RE, PAGE_RE, OWNERS, hashLine, parseBinding, formatBinding, bindStateFrom, ownerOf, bindingOwner, ownsBinding };
