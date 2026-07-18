@@ -1,25 +1,16 @@
 'use strict';
 
 // Highlighting matched words in Reading view (DOM) and in the editor (CM6), shared by the
-// two prose linkers.
-//
-// The pair had two copies of this file differing in about seventy lines, and every one of
-// those lines was a name rather than a decision: `heading-link` against `glossary-link`,
-// `data-heading-target` against `data-glossary-target`, `m.linktext` against `m.canonical`,
-// and each plugin's own way of asking "which note am I in?". The behaviour — what counts as
-// a protected node, when a span is ambiguous, what a middle-click does, how a peer's readings
-// ride along on a decoration — was identical, so a fix to one copy had to be transcribed into
-// the other by hand. That is the duplication this removes.
-//
-// `createHighlight(config)` returns the mixin; the names live in the config.
+// two prose linkers. `createHighlight(config)` returns the mixin; the names live in the
+// config:
 //
 //   cls          prefix for CSS classes and data attributes ('heading' -> `heading-link`,
-//                `cm-heading-link`, `data-heading-target`). A global namespace, so it must be
-//                the plugin's own.
+//                `cm-heading-link`, `data-heading-target`). A global namespace, so it must
+//                be the plugin's own.
 //   displayName  used only in the console warning when CodeMirror is missing.
 //   targetOf     match -> the string this plugin links to and reopens from.
-//   selfIdFor    (plugin, path) -> how the matcher recognises the note's own entry, so a note
-//                doesn't link to itself.
+//   selfIdFor    (plugin, path) -> the matcher's id for the note itself, so a note doesn't
+//                link to itself.
 
 const { t } = require('../i18n');
 const { ownedMatches, yieldedCandidates, candidatesFor, discoverLinkers } = require('../discover');
@@ -36,18 +27,14 @@ function createHighlight(config) {
   const ATTR_FOREIGN = `data-${cls}-foreign`;
 
   return {
-    // Our matches minus the ones a higher-ranked sibling linker also claims. With no sibling
-    // installed this is the list itself and costs nothing; with one, a word both know is
-    // drawn once, by the same plugin in both render modes, rather than by whichever ran
-    // first. See shared/discover.js.
+    // Our matches minus the ones a higher-ranked sibling also claims.
     ownSpans(text, matches) {
       const provider = this.api && this.api.linker;
       if (!provider) return matches;
       return ownedMatches(this.app, provider, text, matches);
     },
 
-    // What the linkers that yielded a span to us would have offered there. Empty in a solo
-    // vault, so the caller pays nothing for asking.
+    // What the linkers that yielded a span to us would have offered there.
     yieldedIn(text) {
       const provider = this.api && this.api.linker;
       if (!provider) return [];
@@ -83,11 +70,10 @@ function createHighlight(config) {
     decorateTextNode(node, selfId, sourcePath) {
       const text = node.textContent;
       if (!text || text.length < 2) return;
-      // protect:true keeps this in step with the materialize path, so the Nth
-      // highlighted occurrence here is the Nth occurrence that gets linked.
+      // protect:true keeps this in step with the materialize path, so the Nth highlighted
+      // occurrence here is the Nth occurrence that gets linked.
       const matches = this.ownSpans(text, this.findMatches(text, selfId, { protect: true }));
       if (!matches.length) return;
-      // Collected once for the whole node, not per match.
       const yielded = this.yieldedIn(text);
 
       const frag = document.createDocumentFragment();
@@ -96,35 +82,26 @@ function createHighlight(config) {
         if (m.start > cursor) frag.appendChild(document.createTextNode(text.slice(cursor, m.start)));
         const target = targetOf(m);
         const display = m.display;
-        // Another linker's readings of the same word sit alongside our own alternatives: a
-        // word that means two things is ambiguous whether or not one plugin knows both.
         const foreign = candidatesFor(yielded, m.start, m.end);
         const alts = [...(m.alts || []), ...foreign];
         const a = document.createElement('a');
         a.textContent = display;
         a.setAttribute(ATTR_TARGET, target); // used for occurrence counting below
         if (alts.length) {
-          // Ambiguous: no data-href, so Obsidian shows no (misleading) single-page
-          // preview, just the aria-label tooltip. Click asks which one to open.
+          // No data-href: Obsidian would show one target's preview for a word that means
+          // several. No aria-label either — the hover list already says the same thing, and
+          // the app renders aria-labels as tooltips on top of it.
           a.className = `${LINK_CLASS} ${AMBIGUOUS_CLASS}`;
           const candidates = [target, ...alts];
-          // No aria-label listing the names: hovering now opens the list itself, and the
-          // app renders an aria-label as a tooltip, so the two would say the same thing on
-          // top of each other.
           const pick = (e, newTab) => {
             e.preventDefault();
             e.stopPropagation();
-            // The modal opens a foreign candidate with no arguments, so where and how to open
-            // is bound here, at the click that knows both.
             this.chooseTerm(
               candidates.map((c) => (typeof c === 'object' ? { ...c, open: () => c.open(sourcePath, newTab) } : c)),
               newTab ? t('menu.openNewTabTitle') : t('menu.openTitle'),
               (c) => this.openTerm(c, sourcePath, newTab)
             );
           };
-          // Hovering lists what the word could mean, and hovering a row in that list asks
-          // Obsidian for its ordinary preview of that one target. The span itself still gets
-          // no preview: one note's preview for a word that means three would be a lie.
           a.addEventListener('mouseenter', (e) => {
             if (!this.choices) return;
             this.choices.schedule(candidates.map((c) => (typeof c === 'object' ? {
@@ -140,15 +117,12 @@ function createHighlight(config) {
           a.addEventListener('auxclick', (e) => { if (e.button === 1) pick(e, true); });
           a.addEventListener('mousedown', (e) => { if (e.button === 1) { e.preventDefault(); e.stopPropagation(); } });
         } else {
-          // A single reading: a real internal link, so hover shows its preview.
           a.className = `internal-link ${LINK_CLASS}`;
           a.href = target;
           a.setAttribute('data-href', target);
         }
-        // No context menu here on purpose. Reading view is for reading: a click opens (asking
-        // which target when there are several), and everything that edits the note lives in
-        // the editor's own menu. Offering "link this word" here but not its opposite was the
-        // asymmetry that made the two menus feel like different plugins.
+        // No context menu on purpose: reading view is for reading, and everything that edits
+        // the note lives in the editor's own menu.
         frag.appendChild(a);
         cursor = m.end;
       }
@@ -156,8 +130,7 @@ function createHighlight(config) {
       node.parentNode.replaceChild(frag, node);
     },
 
-    // Editor highlight (Live Preview / Source). Always registered; the
-    // editingHighlight setting controls if and how often it recomputes.
+    // Always registered; the editingHighlight setting controls if and how often it recomputes.
     registerEditingHighlight() {
       let view, state, language;
       try {
@@ -185,10 +158,8 @@ function createHighlight(config) {
         }
         return m;
       };
-      // Collision marks carry a per-match tooltip and the alternatives, so they are not cached.
-      // The tooltip lists every match, including the one it resolves to. Another linker's
-      // readings ride along as data: a decoration is attributes, not closures, so the candidate
-      // keeps the peer's id and the opener is looked up again on click.
+      // A decoration is attributes, not closures, so a peer's readings ride along as data:
+      // the candidate keeps the peer's id and the opener is looked up again on click.
       const markWithAlts = (target, alts, foreign) => {
         const attributes = {
           [ATTR_TARGET]: target,
@@ -210,7 +181,6 @@ function createHighlight(config) {
         const tree = syntaxTree(editorView.state);
         for (const { from, to } of editorView.visibleRanges) {
           const text = editorView.state.doc.sliceString(from, to);
-          // Once per visible range, not per match.
           const yielded = plugin.yieldedIn(text);
           for (const m of plugin.ownSpans(text, plugin.findMatches(text, selfId))) {
             const start = from + m.start;
@@ -229,8 +199,8 @@ function createHighlight(config) {
       const targetEl = (e) => (e.target instanceof HTMLElement ? e.target.closest('.' + CM_LINK_CLASS) : null);
       const targetOfEl = (el) => el.getAttribute(ATTR_TARGET);
       const altsOf = (el) => { const v = el.getAttribute(ATTR_ALTS); return v ? v.split('\n') : null; };
-      // Another linker's readings, parked on the decoration as data. The opener is resolved
-      // now rather than then: the plugin may have been disabled since the mark was drawn.
+      // The opener is resolved at click time, not at draw time: the peer may have been
+      // disabled since the mark was drawn.
       const foreignOf = (el, sourcePath, newTab) => {
         const raw = el.getAttribute(ATTR_FOREIGN);
         if (!raw) return [];
@@ -254,14 +224,11 @@ function createHighlight(config) {
         });
       };
 
-      // The candidates parked on a decoration, read back out of it.
       const candidatesOn = (el, sourcePath) =>
         [targetOfEl(el), ...(altsOf(el) || []), ...foreignOf(el, sourcePath, false)];
 
-      // Pressing the modifier while already hovering a word has to open the list, exactly as
-      // the app shows a link preview when you press it without moving the pointer. mouseover
-      // fired long before the key did, so the key press is its own event — the other order
-      // (modifier first, then move onto the word) is what the mouseover handler covers.
+      // Pressing the modifier while already hovering: mouseover fired long before the key,
+      // so the key press has to be its own way in.
       let lastX = 0;
       let lastY = 0;
       plugin.registerDomEvent(document, 'mousemove', (e) => { lastX = e.clientX; lastY = e.clientY; });
@@ -297,14 +264,11 @@ function createHighlight(config) {
               const file = plugin.app.workspace.getActiveFile();
               const sourcePath = file ? file.path : '';
               const alts = altsOf(el) || [];
-              // Same set of readings the reading view offers, so a word behaves the same in
-              // both modes rather than losing half its meanings in the editor.
               const pick = (newTab, title) => {
                 const candidates = [targetOfEl(el), ...alts, ...foreignOf(el, sourcePath, newTab)];
                 plugin.chooseTerm(candidates, title, (c) => plugin.openTerm(c, sourcePath, newTab));
               };
               // Like Obsidian's links: middle-click opens a tab, Ctrl/Cmd+click follows.
-              // An ambiguous word asks which one to open first.
               if (e.button === 1) {
                 pick(true, t('menu.openNewTabTitle'));
                 e.preventDefault();
@@ -319,13 +283,9 @@ function createHighlight(config) {
               if (!el) return;
               const file = plugin.app.workspace.getActiveFile();
               const sourcePath = file ? file.path : '';
-              // Ambiguous: no single preview, because one target's preview would be a lie
-              // about a word that means several things. The list of meanings instead, with
-              // the real preview one row-hover away.
               if (el.hasAttribute(ATTR_ALTS) || el.hasAttribute(ATTR_FOREIGN)) {
-                // In the editor a link previews only with the modifier held, and this list
-                // stands in for a preview, so it follows the same rule. Reading view has no
-                // such requirement and does not apply one either.
+                // The list stands in for a preview, so in the editor it follows the preview's
+                // rule and waits for the modifier. Reading view has no such rule.
                 if (!plugin.choices || !(e.ctrlKey || e.metaKey)) return;
                 plugin.choices.schedule(candidatesOn(el, sourcePath), e.clientX, e.clientY);
                 return;
@@ -335,9 +295,8 @@ function createHighlight(config) {
             mouseout(e) {
               if (targetEl(e) && plugin.choices) plugin.choices.leave();
             },
-            // No handler for contextmenu: a right-click in the editor already raises Obsidian's
-            // own menu, and everything we offer for the word under the cursor is added there.
-            // One menu, whichever half of the toggle applies.
+            // No contextmenu handler: a right-click already raises Obsidian's menu, and
+            // everything we offer for the word under the cursor is added there.
           },
         }
       );

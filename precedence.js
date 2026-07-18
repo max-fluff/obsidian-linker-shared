@@ -1,26 +1,16 @@
 'use strict';
 
-// The order the linker plugins take priority in, and the settings control for it.
-//
-// One number per plugin, one order across the whole family. The number is only ever consulted
-// when two of them claim the same thing — a word both prose linkers match, a link both sigil
-// linkers recognise — so a pair that never contests anything simply never reads it. That is
-// why the order is family-wide rather than one per kind: the reader keeps a single list in
-// their head, not two half-lists whose interaction they have to work out.
-//
-// The awkward part is that a plugin can only write its *own* settings. So this does not
-// reorder the list; it moves us within it, and the others keep whatever they had. That is
-// enough to reach any arrangement — move each plugin to where it belongs from its own tab —
-// and it means the two sides never disagree, because each one publishes its own number and
-// everybody reads the published values.
+// The family-wide priority order and the settings control for it. A plugin can only write
+// its own settings, so the control does not reorder the list — it moves us within it, and
+// every arrangement is reachable by moving each plugin from its own tab. Both sides publish
+// their own number and read the others', so they cannot disagree.
 
 const { discoverLinkers, outranks, siblingLinkers } = require('./discover');
 
 // Gap left between ranks so a later move has somewhere to go without landing on a tie.
 const STEP = 10;
 
-// Every installed linker, highest priority first. Ties fall back to the id, exactly as
-// `outranks` does, so the list reads in the same order the matcher resolves in.
+// Highest priority first, ties by id — the same order `outranks` resolves in.
 function rankedLinkers(app) {
   return discoverLinkers(app).slice().sort((a, b) => {
     if (outranks(a, b)) return -1;
@@ -29,11 +19,9 @@ function rankedLinkers(app) {
   });
 }
 
-// The precedence `self` has to store to sit at `index` of the family-wide order.
-//
-// Above everyone, below everyone, or midway between the two it lands between. Midway rather
-// than a fixed step because the neighbours' values are theirs, not ours, and may already sit
-// closer together than STEP.
+// The precedence `self` has to store to sit at `index` of the order. Midway between the two
+// neighbours rather than a fixed step, because their values are theirs, not ours, and may
+// already sit closer together than STEP.
 function precedenceForIndex(app, self, index) {
   const others = rankedLinkers(app).filter((p) => p.id !== self.id);
   if (!others.length) return self.precedence || 0;
@@ -45,25 +33,20 @@ function precedenceForIndex(app, self, index) {
   return (above + below) / 2;
 }
 
-// Where we currently sit in that order.
 function currentIndex(app, self) {
   return rankedLinkers(app).findIndex((p) => p.id === self.id);
 }
 
-// The setting itself: the whole family in priority order, with our own row the one that
-// moves. Renders nothing at all when no sibling is installed — alone there is no order to
-// argue about, and an empty ranking would only raise a question the reader doesn't have.
-//
-// `opts.save(value)` stores our new precedence and persists it; `opts.Setting` is Obsidian's,
-// passed in rather than imported so this file stays free of the plugin's own bundle wiring.
+// Renders nothing when no sibling is installed — alone there is no order to argue about.
+// `opts.Setting` is Obsidian's, passed in so this file stays free of bundle wiring;
+// `opts.save(value)` persists our new precedence.
 function renderPrecedence(containerEl, opts) {
   const { app, provider, Setting, name, desc, save } = opts;
   if (!provider || !siblingLinkers(app, provider).length) return;
 
   new Setting(containerEl).setName(name).setDesc(desc);
 
-  // Class names are a global namespace and all four plugins render this component, so the
-  // prefix comes from the caller — same arrangement as the folder-list component.
+  // Class names are global and all four plugins render this, so the prefix is the caller's.
   const cls = opts.cls || 'linker';
   const list = containerEl.createDiv({ cls: `${cls}-precedence-list` });
   const draw = () => {
@@ -73,8 +56,6 @@ function renderPrecedence(containerEl, opts) {
       const mine = p.id === provider.id;
       const row = new Setting(list).setName(`${i + 1}. ${p.displayName || p.id}`);
       if (!mine) {
-        // Another plugin's position is its own to change; saying so is kinder than a
-        // disabled button with no explanation.
         row.setDesc(opts.otherDesc || '');
         return;
       }
@@ -92,8 +73,7 @@ function renderPrecedence(containerEl, opts) {
     });
   };
 
-  // Everyone reads everyone's published number, so a move has to redraw the others too —
-  // otherwise the setting only half-applies until something else rebuilds.
+  // A move changes the whole order, so peers re-render their highlights too.
   const refresh = () => {
     for (const p of siblingLinkers(app, provider)) {
       if (typeof p.refresh === 'function') { try { p.refresh(); } catch (e) { /* peer threw */ } }

@@ -1,18 +1,9 @@
 'use strict';
 
-// The root placeholder a deep link stores instead of an absolute path, so a note stays
-// portable and the machine-specific root is filled in on render and on click.
-//
-// Both sigil plugins used to spell it `{root}` and both filled it with their own root, so
-// with the pair installed whichever post-processor ran first won and the other plugin's
-// links resolved against the wrong tree. The token is namespaced per plugin to make a link
-// say who it belongs to.
-//
-// The bare `{root}` stays readable forever: notes already carry it, and rewriting someone's
-// vault is not a migration anyone asked for. A legacy token is claimed only when the caller
-// can show the link is theirs — from its binding, from being the only linker installed, or
-// from the path resolving under their root. When nobody can show it, the link is left as it
-// is rather than guessed at.
+// The root placeholder a deep link stores instead of an absolute path, namespaced per
+// plugin so a link says who it belongs to. The bare legacy `{root}` stays readable forever;
+// it is claimed only when the caller can show the link is theirs (binding, solo install, or
+// path resolving under their root), and left alone otherwise.
 
 const OWNER_TOKENS = { code: 'code-root', reference: 'ref-root' };
 const LEGACY_TOKEN = 'root';
@@ -40,8 +31,8 @@ function ownsRootToken(url, owner, claimLegacy) {
   return found === 'legacy' && !!claimLegacy;
 }
 
-// Substitute the absolute root for the token this owner is responsible for. Another
-// plugin's token is left untouched, which is the whole point.
+// Substitute the absolute root for the token this owner is responsible for; another
+// plugin's token is left untouched.
 function fillRoot(url, { owner, root, claimLegacy = false } = {}) {
   const s = String(url == null ? '' : url);
   if (!owner || !OWNER_TOKENS[owner]) return s;

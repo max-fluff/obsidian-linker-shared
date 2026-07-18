@@ -1,18 +1,9 @@
 'use strict';
 
-// Finding term occurrences in prose, shared by the two prose linkers.
-//
-// What is shared is the scan: tokenise the text, look each token up in the index, prefer the
-// longest candidate that fits, skip protected ranges, collect the other readings of the same
-// span. That loop was duplicated almost line for line, and it is the part where a subtle
-// difference between the two plugins would be worst — the highlighter, the autocomplete and
-// the materialize preview all have to agree about which occurrence is the Nth one.
-//
-// What is NOT shared is building the index. A glossary term is a whole note with frontmatter
-// aliases; a heading term is one heading inside a note, identified by "File#Heading", with
-// aliases in a `%% alias: … %%` comment. Those are different data models rather than
-// different names for one, so each plugin keeps its own rebuildIndex and only has to produce
-// candidates this scan understands: { words, wordCount } plus whatever its own fields are.
+// Finding term occurrences in prose, shared by the two prose linkers. The scan is shared;
+// building the index is not — a glossary term is a note, a heading term is "File#Heading",
+// different data models. An index candidate must carry { words, wordCount } plus the
+// plugin's own fields.
 //
 // createMatcher(config):
 //   idOf(c)             identity for dedup and for the alternatives list
@@ -22,13 +13,8 @@
 //   accepts(plugin, m)  optional extra veto once a candidate has matched
 //   caseFits(plugin, c, surface)  optional case rule; heading uses it for acronyms
 
-// Ranges that must never be linked, whatever the plugin.
-//
-// `%%` is in the list for both. It used to be heading-only, which was a real hazard once the
-// two plugins were installed together: heading keeps its aliases inside those comments, so
-// the glossary linker would happily turn `%% alias: Spawn, spawning %%` into
-// `%% alias: [[Spawn]], spawning %%` and heading would then read an alias literally called
-// "[[Spawn]]". A comment is not prose in either plugin's world.
+// Ranges that must never be linked, whatever the plugin. `%%` protects both: heading keeps
+// its aliases inside those comments, so linking there would corrupt them.
 const PROTECT = [
   /```[\s\S]*?```/g,
   /~~~[\s\S]*?~~~/g,
@@ -158,8 +144,7 @@ function createMatcher(config) {
         if (matched && selfIdOf(matched.c) !== selfId) {
           const inProtected = protect && this.overlapsProtected(protect, matched.start, matched.end);
           if (accepts(this, matched, tk) && !inProtected) {
-            // The other terms that match the same span — a collision the reader gets to
-            // resolve rather than one the index resolves silently.
+            // The other terms matching the same span, left for the reader to resolve.
             let alts = null;
             if (sorted.length > 1) {
               const seenId = new Set([idOf(matched.c)]);

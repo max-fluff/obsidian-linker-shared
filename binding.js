@@ -1,29 +1,17 @@
 'use strict';
 
 // What a link is pinned to, stored in its markdown title: [text](url "sym:Name kind:class").
-//
-// The binding lives in the title, never in the link text, so the text stays prose — call a
-// link "the service" and it still tracks. It also keeps the slot ours: a title without a
-// known token is the reader's own tooltip, so a binding that no longer resolves can only
-// mean the target changed. That is what lets a lost binding be reported without crying wolf.
-//
-// Anchors are requirements and combine by intersection. Each plugin uses the ones it can
-// resolve: sym/kind/line for code (a declaration on a line), sec for documents (a section
-// in a PDF outline). Resolving them needs an index and belongs to the plugin; everything
-// here is text. The stored position — a line, a page — is the plugin's too; bindStateFrom
-// works in plain numbers.
+// The binding lives in the title, never in the link text, so the text stays prose. Anchors
+// are requirements and combine by intersection; resolving them needs an index and belongs to
+// the plugin — everything here is text.
 
 const ANCHORS = { sym: 'sym', kind: 'kind', sec: 'sec', line: 'hash' };
 const TOKEN = /^(sym|kind|sec|line):(.+)$/;
 
-// Who a binding belongs to. The anchor sets are already disjoint in practice — code writes
-// sym/kind/line, documents write sec, and neither has ever written the other's — so the
-// owner reads straight off the anchors and no owner token is needed. That matters: the
-// format doesn't change, so notes written before any of this keep working untouched.
-//
-// A binding mixing both sides is owned by nobody. Nothing produces one today; treating it
-// as unclaimed keeps a plugin from acting on a binding it can't fully resolve, which is
-// the failure that made two installed plugins mark each other's links broken.
+// Who a binding belongs to, read straight off the anchors: code writes sym/kind/line,
+// documents write sec, and the format predates ownership — notes written before it keep
+// working untouched. A binding mixing both sides is owned by nobody, so no plugin acts on a
+// binding it can't fully resolve.
 const OWNERS = { code: ['sym', 'kind', 'hash'], reference: ['sec'] };
 
 function ownerOf(binding) {
