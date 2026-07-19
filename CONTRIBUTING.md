@@ -92,7 +92,18 @@ this repo. That is a supported configuration, not an error. The rules that keep 
 - Plain CommonJS, no TypeScript. `obsidian` and `@codemirror/*` are externals; esbuild
   bundles everything else — including this repo — into each plugin's `main.js`.
 - `main.js` and `styles.css` are **committed build artifacts**; CI fails if they drift from
-  `src/`. After any change: `npm run build` in each plugin, then `npm test`.
+  their sources. After any change: `npm run build` in each plugin, then `npm test`.
+- **Never edit a plugin's root `styles.css`** — it is assembled by the build from
+  `styles/common.css` + `styles/{prose,sigil}.css` here and the plugin's own
+  `src/styles.css`, in that order, so a plugin rule wins a tie. `%p%` stands for the
+  plugin's class prefix (declared in its `esbuild.config.mjs`) and is substituted in both,
+  so moving a rule between shared and plugin is a plain cut and paste.
+- Keep styling native: reach for Obsidian's CSS variables (`--text-muted`,
+  `--background-modifier-border`, `--radius-s`, `--layer-popover`) rather than literal
+  values, and scope every selector to a `%p%-` class — an unscoped `.setting-item` rule
+  restyles other plugins' settings panes.
+- `.github/workflows/build.yml` is byte-identical in all four plugins and cannot move here —
+  GitHub only reads workflows from the repository itself. Change one, copy to the others.
 - Tests use the zero-dependency harness at `testing/harness.js` (Node 16 has no
   `node:test`; the API is the same `describe`/`it` subset, plain `node:assert`). Tests for
   this repo's modules live in `testing/tests/` and are run by all four plugin suites;
