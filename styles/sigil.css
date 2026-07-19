@@ -1,0 +1,184 @@
+/* Styles both sigil linkers use. The plugin class prefix is substituted by build.mjs. */
+
+.%p%-suggestion {
+  display: flex;
+  gap: 0.5em;
+  align-items: baseline;
+}
+
+.%p%-name {
+  font-weight: var(--font-semibold);
+}
+
+.%p%-kind {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.%p%-path {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+}
+
+.%p%-input {
+  width: 100%;
+}
+
+/* Muted helper / status line under a control or section — one class for every such
+   note in the pane. .is-error tints it for a missing folder or other problem. */
+.%p%-note {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin: 4px 0 14px;
+}
+
+.%p%-note.is-error {
+  color: var(--text-error);
+}
+
+/* User editor preset rows: name + template + remove on one line, wrapping to
+   two lines on a narrow pane so nothing collides. The full control area is used
+   (the empty name label is hidden) and the theme styles the row like any other. */
+.%p%-editor-row .setting-item-info {
+  display: none;
+}
+
+.%p%-editor-row .setting-item-control {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.%p%-editor-name {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.%p%-editor-tpl {
+  flex: 3 1 240px;
+  min-width: 0;
+}
+
+.%p%-hover {
+  position: fixed;
+  z-index: var(--layer-popover);
+  max-width: min(720px, 90vw);
+  box-shadow: var(--shadow-s);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.%p%-hover.%p%-hidden {
+  display: none;
+}
+
+.%p%-embed {
+  margin: var(--p-spacing, 1em) 0;
+}
+
+.%p%-embed-error,
+.%p%-embed-note {
+  padding: 6px 10px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.%p%-embed-error {
+  color: var(--text-error);
+}
+
+/* Drifted line (stale) and renamed/removed symbol (broken), in both render modes.
+   A border-bottom rather than text-decoration: wavy/offset underlines render
+   inconsistently across platforms, so a plain border is the reliable choice. */
+.%p%-stale,
+.%p%-broken {
+  border-bottom-width: 1px;
+  border-bottom-style: var(--%p%-mark-underline-style, dotted);
+}
+
+.%p%-stale {
+  border-bottom-color: var(--%p%-stale-color, var(--text-warning));
+}
+
+.%p%-broken {
+  border-bottom-color: var(--%p%-broken-color, var(--text-error));
+}
+
+/* Nested sub-rows — searchable kinds under a language, and chosen folders under a
+   folder list — share one indent and compact height so the pane reads as one list
+   style. The kind rule is unqualified so it also indents the plain rebuild hint. */
+.%p%-kind-row,
+.%p%-folder-row {
+  margin-left: 1.5em;
+  padding-left: 0.75em;
+  border-left: 2px solid var(--background-modifier-border);
+}
+
+.%p%-kind-row.setting-item,
+.%p%-folder-row.setting-item {
+  border-top: 0;
+  padding: 4px 6px 4px 0.75em;
+}
+
+.%p%-kind-row .setting-item-name {
+  font-size: 0.9em;
+  opacity: 0.85;
+}
+
+/* Folder-set editor: a full-width input with autocomplete and an add button below
+   the chosen-folder rows. */
+.%p%-folder-rows:not(:empty) {
+  margin: 6px 0;
+}
+
+.%p%-preview-file {
+  font-weight: var(--font-semibold);
+  margin: 12px 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.%p%-preview-table td {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 3px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.%p%-preview-pick {
+  width: 1%;
+  padding-right: 0;
+  vertical-align: middle;
+}
+
+.%p%-preview-move {
+  font-family: var(--font-monospace);
+  white-space: nowrap;
+  width: 1%;
+  color: var(--text-muted);
+}
+
+/* A guessed move (file matched by symbol or basename), not a plain line drift — tinted so
+   it stands out for a closer look before applying. */
+.%p%-preview-moved .%p%-preview-move {
+  color: var(--%p%-stale-color, var(--text-warning));
+  white-space: normal;
+}
+
+.%p%-preview-more,
+.%p%-preview-empty {
+  color: var(--text-muted);
+  padding: 8px 0;
+}
+
+.%p%-preview-attention {
+  color: var(--%p%-broken-color, var(--text-error));
+}
+
+.%p%-preview-broken {
+  font-size: var(--font-ui-small);
+  color: var(--%p%-broken-color, var(--text-error));
+  padding: 2px 8px;
+  overflow-wrap: anywhere;
+}

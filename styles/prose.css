@@ -1,0 +1,186 @@
+/* Styles both prose linkers use. The plugin class prefix is substituted by build.mjs. */
+
+.%p%-link,
+.cm-%p%-link {
+  color: var(--%p%-link-color, var(--link-color));
+  text-decoration: none;
+  border-bottom: 1px var(--%p%-underline-style, dotted) var(--%p%-link-color, var(--link-color));
+  cursor: pointer;
+}
+
+/* Reading view builds the match as a real <a> so hover preview and click behave like any
+   link — and a theme underlines links, which lands a second line under our own. Ours is the
+   one carrying the underline-style setting, so the anchor's own decoration is switched off
+   here, at a specificity a theme's `.markdown-rendered a` rule can't outrank. */
+a.%p%-link,
+a.%p%-link:hover,
+a.%p%-link.internal-link,
+a.%p%-link.internal-link:hover {
+  text-decoration: none;
+}
+
+.%p%-link:hover,
+.cm-%p%-link:hover {
+  color: var(--link-color-hover);
+  border-bottom-style: solid;
+}
+
+.%p%-ambiguous,
+.cm-%p%-ambiguous {
+  border-bottom-width: 3px;
+  border-bottom-style: var(--%p%-ambiguous-underline-style, double);
+}
+
+.%p%-ambiguous:hover,
+.cm-%p%-ambiguous:hover {
+  border-bottom-width: 3px;
+  border-bottom-style: var(--%p%-ambiguous-underline-style, double);
+}
+
+/* Autocomplete suggestion rows */
+.%p%-suggestion {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.%p%-suggestion-note {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  margin-left: auto;
+}
+
+/* Per-word collision resolver in the "turn into links" preview */
+.%p%-term-select {
+  max-width: 16em;
+}
+
+.%p%-ambiguous-row td {
+  vertical-align: middle;
+}
+
+.%p%-resolve-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+}
+
+.%p%-resolve-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.%p%-resolve-word {
+  font-weight: var(--font-semibold);
+  min-width: 8em;
+}
+
+/* Choose-a-term (collision resolution) dialog */
+.%p%-choose-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.%p%-choose-item {
+  text-align: left;
+  width: 100%;
+}
+
+.%p%-preview-table td,
+.%p%-preview-table th {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.%p%-preview-file {
+  font-weight: var(--font-semibold);
+  margin: 10px 0 4px;
+}
+
+.%p%-preview-empty {
+  color: var(--text-muted);
+  padding: 12px 0;
+}
+
+.%p%-section-desc {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin: 4px 0 14px;
+}
+
+/* Language rows share the folder-row indent below, so both nested lists in the
+   pane line up. */
+.%p%-lang-row.setting-item {
+  border-top: none;
+  margin-left: 1.5em;
+  padding: 6px 6px 6px 0.75em;
+  border-left: 2px solid var(--background-modifier-border);
+}
+
+.%p%-lang-error {
+  color: var(--text-error);
+}
+
+/* Scoped to our own rows: `.setting-item.mod-warning` on its own would restyle the warning
+   rows in every other plugin's settings too. */
+.%p%-lang-row.mod-warning .extra-setting-button {
+  color: var(--text-error);
+  opacity: 1;
+}
+
+/* Folder-set editor. Each chosen path is a compact indented row (matching the
+   language-row treatment so the pane reads as one list style); a full-width input
+   with autocomplete and an add button sits below the list. */
+.%p%-folder-rows:not(:empty) {
+  margin: 6px 0;
+}
+
+.%p%-folder-row.setting-item {
+  border-top: none;
+  padding: 4px 6px 4px 0.75em;
+  margin-left: 1.5em;
+  border-left: 2px solid var(--background-modifier-border);
+}
+
+/* The list of what a word could mean, shown on hover over an ambiguous span. Hovering a
+   row opens Obsidian own page preview for that one target, so this stays a plain list. */
+.%p%-choices {
+  position: fixed;
+  z-index: var(--layer-popover);
+  max-width: 320px;
+  padding: 6px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-primary);
+  box-shadow: var(--shadow-s);
+}
+
+.%p%-choices.%p%-hidden {
+  display: none;
+}
+
+.%p%-choices-title {
+  padding: 2px 8px 6px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.%p%-choices-item {
+  padding: 4px 8px;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.%p%-choices-item:hover {
+  background: var(--background-modifier-hover);
+}
