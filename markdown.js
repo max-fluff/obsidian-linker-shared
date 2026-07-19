@@ -129,4 +129,20 @@ function rewriteFences(text, lang, fn) {
   return { text: lines.join('\n'), count };
 }
 
-module.exports = { splitLines, linkRegex, splitTarget, withTitle, rewriteLinks, rewriteFences, isFenceLine, inInlineCode, locate, inCode, inLink, isProtected, inTableCell };
+// The plain word under `ch`, or ''. Index-free on purpose: an excluded term is gone from the
+// index, so the menu that offers to un-exclude it cannot find the word by matching.
+function wordAt(line, ch) {
+  const s = String(line == null ? '' : line);
+  if (!s) return '';
+  const isWord = (c) => /[\p{L}\p{Nd}]/u.test(c || '');
+  const at = Math.max(0, Math.min(ch, s.length));
+  // A cursor sitting just past the end of a word still belongs to it.
+  if (!isWord(s[at]) && !isWord(s[at - 1])) return '';
+  let start = at;
+  while (start > 0 && isWord(s[start - 1])) start--;
+  let end = at;
+  while (end < s.length && isWord(s[end])) end++;
+  return s.slice(start, end);
+}
+
+module.exports = { splitLines, linkRegex, splitTarget, withTitle, rewriteLinks, rewriteFences, isFenceLine, inInlineCode, locate, inCode, inLink, isProtected, inTableCell, wordAt };
