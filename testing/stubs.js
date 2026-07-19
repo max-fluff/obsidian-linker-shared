@@ -141,11 +141,8 @@ function recordingMenu() {
   return menu;
 }
 
-// A Setting that records what was built and keeps the controls' callbacks reachable, so a
-// test can assert both what a settings section renders and what changing a control does.
-// Install it over the stub's `Setting` *before* requiring the module under test: the shared
-// renderers destructure `Setting` from 'obsidian' at load time. Rows collect on the class,
-// so a test must `reset()` before it renders or it reads the previous test's.
+// Install over the stub's `Setting` *before* requiring the module under test — the shared
+// renderers destructure it at load time. Rows collect on the class, so `reset()` first.
 class RecordingSetting {
   constructor() {
     this.entry = { name: '', desc: '', heading: false, controls: [], classes: [] };

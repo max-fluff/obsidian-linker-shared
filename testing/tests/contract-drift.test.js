@@ -1,20 +1,8 @@
 'use strict';
 
-// What must hold no matter which versions of these plugins share a vault.
-//
-// Every plugin bundles its own copy of this submodule, so the sibling next to you was built
-// from some other commit — older than yours, or newer. That is a supported configuration, not
-// an error, and it is the one case whose breakage you cannot see while you work: it happens
-// in someone else's vault, with a combination you never installed.
-//
-// So this file is the promise, not the behaviour. Which spans get owned, how precedence
-// moves, what a menu offers — all of that is meant to change between releases and is tested
-// elsewhere. What is frozen is that a peer missing a member contributes nothing instead of
-// crashing, that a grade this version has never heard of reads as no claim, and that the
-// grades older versions were built against keep their order.
-//
-// Changing anything here means older siblings stop working. That is the LINKER_API bump the
-// contributing guide talks about, and the price is that they stop seeing you entirely.
+// The promise, not the behaviour: a sibling built from another commit of this submodule must
+// degrade, never crash. Breaking anything here means older siblings stop working — the
+// LINKER_API bump CONTRIBUTING describes.
 
 const { describe, it, assert } = require('../harness');
 const {

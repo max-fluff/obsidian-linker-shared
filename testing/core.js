@@ -1,22 +1,7 @@
 'use strict';
 
-// Which tests a push has to pass.
-//
-// Deliberately almost nothing: only what is frozen. A push should be blocked by a promise
-// broken, not by logic changed — changing logic is what most commits are for, and a test that
-// argues with a deliberate change is friction, not safety.
-//
-// Two things qualify. One, the plugin loads at all: esbuild bundles a call to a deleted
-// helper without complaint, and the result fails in Obsidian rather than in Node. Two, the
-// cross-version promise: every plugin carries its own copy of this submodule, so the sibling
-// in the reader's vault was built from another commit, and neither side can see that pairing
-// while they work.
-//
-// Everything else — matching, menus, dialogs, settings, precedence arithmetic — runs on
-// `npm test` and is the developer's own net.
-//
-// Names are matched against the file's basename, so a plugin's own file and a shared one of
-// the same name are both covered.
+// What a push has to pass: only what is frozen. A push should be blocked by a promise broken,
+// not by logic changed. Matched on basename, so a plugin's file and a shared one both count.
 
 const CORE = [
   // The promise that survives every release: a sibling built from another commit degrades

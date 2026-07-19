@@ -28,12 +28,9 @@ function outranks(a, b) {
   return String(a.id) < String(b.id);
 }
 
-// Would `peer` put anything on this surface of this note? Ownership is settled only between
-// the linkers actually working here: a peer that takes a span it will never draw leaves the
-// word claimed by it, dropped by us, and shown by nobody.
-//
-// `where` is `{ path, surface }`. A peer predating `drawsIn`, or one that throws, counts as
-// drawing everywhere — which is what it did before the member existed.
+// A peer that takes a span it will never draw leaves the word shown by nobody. `where` is
+// `{ path, surface }`; a peer predating `drawsIn`, or one that throws, counts as drawing
+// everywhere, which is what it did before the member existed.
 function drawsHere(peer, where) {
   if (typeof peer.drawsIn !== 'function') return true;
   const w = where || {};

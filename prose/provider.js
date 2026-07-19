@@ -14,11 +14,8 @@
 const { LINKER_API } = require('../discover');
 const { t } = require('../i18n');
 
-// Which written form of a term the reader actually touched, when it was not the main one.
-//
-// Compared through the matcher's own keys rather than by string equality: the word in the
-// note is often an inflection of the alias, and that is precisely the case the caption exists
-// for — a row reading "B" after the reader clicked "A" looks like a bug until it says why.
+// Compared through the matcher's keys, not string equality: the word in the note is usually
+// an inflection of the alias, which is the case the caption exists for.
 function aliasHit(plugin, term, mainForm, display) {
   const aliases = (term && term.aliases) || [];
   if (!display || !aliases.length) return null;

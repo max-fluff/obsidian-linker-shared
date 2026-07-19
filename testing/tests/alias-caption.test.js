@@ -1,10 +1,7 @@
 'use strict';
 
-// Why a row the reader did not click is in the list at all.
-//
-// Give term "B" the alias "A" while a separate term "A" exists, and hovering "A" offers both.
-// Without saying that B was reached through its alias, the second row looks like a bug: the
-// reader touched A and is being offered B.
+// Give term "B" the alias "A" while a separate term "A" exists: hovering "A" offers both, and
+// the row for B looks like a bug until it says it answers to "A".
 
 const { describe, it, assert } = require('../harness');
 const { createMatcher } = require('../../prose/matcher');

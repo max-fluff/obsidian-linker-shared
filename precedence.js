@@ -27,13 +27,10 @@ function indexForPrecedence(others, self, value) {
   return others.filter((o) => outranks(o, hypothetical)).length;
 }
 
-// The precedence `self` has to store to sit at `index` of the order.
-//
-// Arithmetic alone cannot answer this. Peers that share a number are ordered by id, so a
-// value landing midway between two equal neighbours reproduces the order it started from —
-// the reader clicks and nothing moves. Which positions a number reaches also depends on our
-// own id, which no formula over the neighbours' values sees. So candidates are tried against
-// the real comparison instead.
+// The precedence `self` has to store to sit at `index`. Arithmetic cannot answer it: peers
+// sharing a number are ordered by id, so a midpoint between equal neighbours reproduces the
+// order it started from and the click does nothing. Candidates are tried against the real
+// comparison instead.
 function precedenceForIndex(app, self, index) {
   const others = rankedLinkers(app).filter((p) => p.id !== self.id);
   if (!others.length) return self.precedence || 0;

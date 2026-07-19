@@ -1,10 +1,7 @@
 'use strict';
 
-// The prose settings sections are shared, so the thing worth pinning is what a control does
-// after it is changed — not that it renders. A setting that changes what the index yields
-// must rebuild it; one that only changes what is drawn must not, or every keystroke in the
-// exclusion box costs a full vault rescan (and forgetting the rebuild leaves the reader
-// staring at matches their setting just ruled out).
+// What a control does after it is changed, not that it renders: a setting that changes what
+// the index yields must rebuild it, one that only changes what is drawn must not.
 
 const { describe, it, assert } = require('../harness');
 const { installStubs, obsidianStub, RecordingSetting, elLike } = require('../stubs');

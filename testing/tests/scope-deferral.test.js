@@ -1,10 +1,8 @@
 'use strict';
 
-// Yielding a span to a higher-ranked sibling: you only stand down for a plugin that is
-// actually working here. `matches` says what a plugin knows; `drawsIn` says whether it would
-// put anything on this surface of this note. Yield on the first alone and a word inside a
-// folder the peer was told to stay out of — or on a surface where its highlighting is off —
-// is claimed by it, dropped by us, and shown by nobody.
+// You only stand down for a plugin actually working here. `matches` says what it knows,
+// `drawsIn` whether it draws on this surface of this note; yield on the first alone and the
+// word ends up shown by nobody.
 
 const { describe, it, assert } = require('../harness');
 const { ownedMatches, yieldedCandidates, peerSuggestions } = require('../../discover');

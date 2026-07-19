@@ -253,12 +253,9 @@ function renderPathList(containerEl, ctx, opts) {
   });
 }
 
-// The module's whole surface. `cls` cannot be hardcoded here because class names are global,
-// and `save(rebuild)` is the caller's because only the plugin knows what a rebuild costs.
-//
-// The plugin behind `tab` has to carry: settings, saveSettings, rebuildIndex, rerenderViews,
-// refreshEditors, updateStatusBar, refreshActiveLanguages, moveLanguage, languages,
-// languageErrors — named here rather than left to be discovered one renderer at a time.
+// The module's whole surface. The plugin behind `tab` has to carry: settings, saveSettings,
+// rebuildIndex, rerenderViews, refreshEditors, updateStatusBar, refreshActiveLanguages,
+// moveLanguage, languages, languageErrors.
 function createProseSettings(tab, opts) {
   const ctx = { tab, cls: opts.cls, save: opts.save };
   return {

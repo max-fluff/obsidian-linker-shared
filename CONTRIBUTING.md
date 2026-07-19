@@ -117,7 +117,14 @@ this repo. That is a supported configuration, not an error. The rules that keep 
 ## Style
 
 - Comments state constraints the code cannot show — why something must not change, what a
-  missing guard would break. Not what the next line does.
+  missing guard would break, a bug that was actually shipped here. Not what the next line
+  does. The default is none: code that needs a comment usually needs a better name.
+  - One or two lines. A paragraph belongs in this file, with the code pointing at it.
+  - One place per fact. A reason worth writing in two files belongs here and nowhere else —
+    repeating it across the five working copies is how they drift apart.
+  - Module headers say what the module is for in three lines at most, not how it works.
+  - Tests document themselves: the `describe`/`it` names are the documentation. Comment a
+    test only when the reason it exists is not already in its name.
 - Menu items are **declared, not written**. An editor-menu handler runs inside
   `buildMenu(this, menu, (menu) => …)` and tags anything several plugins might offer on the
   same object with its verb: `menu.tagged('exclude', { value }, (item, grouped) => …)`. Once

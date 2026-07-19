@@ -13,16 +13,9 @@ const { Component } = require('obsidian');
 // caller. The reader is picking a meaning, not a plugin, so both kinds draw identically.
 const labelOf = (c) => (typeof c === 'object' && c ? c.label : c);
 
-// The two lines a row shows, wherever a row is drawn.
-//
-// Every candidate is captioned by whoever owns it — ours through our own provider, a peer's
-// through its — because only the owner knows whether its target is a heading in a file, a
-// term, or something reached through an alias. `display` is the word the reader actually
-// touched, which is what lets an owner say "you clicked A, this is B under its alias A".
-//
-// Takes the plugin rather than a callback on purpose: every surface that lists candidates
-// asks the same question, and hand-wiring it per surface is how the hover list and the picker
-// came to caption the same row two different ways.
+// Captioned by whoever owns the row; `display` is the word the reader touched, which is how
+// an owner can say "you clicked A, this is B under its alias A". Takes the plugin rather than
+// a callback: wiring this per surface is how the hover list and the picker once disagreed.
 function captionFor(plugin, c, display) {
   const provider = plugin && plugin.api && plugin.api.linker;
   let own = null;
