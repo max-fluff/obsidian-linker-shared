@@ -115,8 +115,21 @@ this repo. That is a supported configuration, not an error. The rules that keep 
 
 - Comments state constraints the code cannot show — why something must not change, what a
   missing guard would break. Not what the next line does.
-- Menu items: object actions group by action (one shared submenu per verb), configuration
-  actions group by plugin. A submenu must earn itself — never wrap a single item.
+- Menu items are **declared, not written**. An editor-menu handler runs inside
+  `buildMenu(this, menu, (menu) => …)` and tags anything several plugins might offer on the
+  same object with its verb: `menu.tagged('exclude', { value }, (item, grouped) => …)`. Once
+  the handler finishes, the builder counts its items plus — through `offers(verb, text)` —
+  the siblings', and past one the verb becomes a shared submenu. Nothing counts by hand, so
+  adding a second item anywhere regroups the menu on its own.
+  - The verb vocabulary is `VERBS` in `menu-verbs.js`. A new shared verb is a line there
+    plus an answer from each plugin's `offers()`.
+  - Only tag what **more than one plugin can offer at once**. Actions with a single owner —
+    unlink, collect alias, link this word — are already unique by ownership, so tagging them
+    would produce a submenu holding one line.
+  - A submenu must earn itself: a lone item stays flat. `menu.section(label, icon)` is the
+    exception, for a plugin's own set of related items that only read together.
+  - Deciding up front is not a style choice: an item already in Obsidian's menu cannot be
+    pulled back out and reparented.
 - Commits: one-line imperative subject, no body.
 - Keep the Obsidian plugin review guidelines in mind: `this.app` only, `vault.process` for
   note edits, feature-detect APIs newer than the minimum app version.
