@@ -2,38 +2,31 @@
 
 // Which tests a push has to pass.
 //
-// The criterion is not importance but visibility: a failure here is one the author of the
-// change cannot see for themselves. The cross-plugin contract breaks in someone else's vault,
-// with the other plugin installed and possibly built from a different commit; a bundle that
-// will not load fails in Obsidian rather than in Node. Neither shows up while you work.
+// Deliberately almost nothing: only what is frozen. A push should be blocked by a promise
+// broken, not by logic changed — changing logic is what most commits are for, and a test that
+// argues with a deliberate change is friction, not safety.
 //
-// Everything else pins behaviour, and behaviour is meant to change between pushes — the whole
-// point of most commits. Those tests are the developer's own net, run by `npm test`, and a
-// deliberate change to matching or to a dialog should not have to argue with CI.
+// Two things qualify. One, the plugin loads at all: esbuild bundles a call to a deleted
+// helper without complaint, and the result fails in Obsidian rather than in Node. Two, the
+// cross-version promise: every plugin carries its own copy of this submodule, so the sibling
+// in the reader's vault was built from another commit, and neither side can see that pairing
+// while they work.
+//
+// Everything else — matching, menus, dialogs, settings, precedence arithmetic — runs on
+// `npm test` and is the developer's own net.
 //
 // Names are matched against the file's basename, so a plugin's own file and a shared one of
 // the same name are both covered.
 
 const CORE = [
-  // The provider contract and how it degrades across versions — the whole reason two of
-  // these plugins can be installed together and built from different commits.
-  'discover.test.js',
-  'link-owner.test.js',
-  'scope-deferral.test.js',
-  'provider-scope.test.js',
-  'broker.test.js',
-
-  // The priority order. Its arithmetic is easy to get subtly wrong and the symptom is a
-  // control that silently does nothing.
-  'precedence-order.test.js',
+  // The promise that survives every release: a sibling built from another commit degrades
+  // instead of crashing, and the grades it was built against keep their meaning.
+  'contract-drift.test.js',
 
   // esbuild will happily bundle a call to something that isn't there, and a computed require
   // it cannot resolve. Both load fine in Node and fail in the app.
   'bundle.test.js',
   'onload.test.js',
-
-  // A missing locale key renders as the key itself in the reader's language.
-  'i18n.test.js',
 ];
 
 const isCore = (file) => CORE.includes(file);

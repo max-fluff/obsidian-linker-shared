@@ -38,29 +38,3 @@ describe('linkOwner', () => {
     assert.strictEqual(linkOwner(appWith(broken, ref), 'file:///x/Spec.pdf', ''), ref);
   });
 });
-
-describe('version drift', () => {
-  it('an older provider without claim() never wins, and never crashes us', () => {
-    const old = { apiVersion: 1, id: 'code-linker', precedence: 99 };
-    const ref = provider('reference-linker', 1, () => 'index');
-    assert.strictEqual(linkOwner(appWith(old, ref), 'file:///x/Spec.pdf', ''), ref);
-  });
-
-  it('a claim grade this version does not know is treated as no claim', () => {
-    // A newer sibling may grow the RANK vocabulary; to this version that grade must read as
-    // "no claim", not as a crash and not as an automatic win.
-    const future = provider('code-linker', 99, () => 'exact-symbol-v2');
-    const ref = provider('reference-linker', 1, () => 'index');
-    assert.strictEqual(linkOwner(appWith(future, ref), 'file:///x/Spec.pdf', ''), ref);
-  });
-
-  it('ownsLink is false when only an older sibling is installed and nobody claims', () => {
-    const self = provider('code-linker', 5, () => null);
-    const old = { apiVersion: 1, id: 'reference-linker', precedence: 10 };
-    assert.strictEqual(ownsLink(appWith(self, old), self, 'file:///x/Spec.pdf', ''), false);
-  });
-
-  it('RANK keeps binding above index — the grades older versions were built against', () => {
-    assert.ok(RANK.binding > RANK.index);
-  });
-});
