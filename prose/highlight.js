@@ -28,17 +28,46 @@ function createHighlight(config) {
 
   return {
     // Our matches minus the ones a higher-ranked sibling also claims.
-    ownSpans(text, matches) {
+    // `where` is `{ path, surface }` — which note, and which of reading/editing/menu is being
+    // built. Peers use it to stand aside where they would draw nothing.
+    ownSpans(text, matches, where) {
       const provider = this.api && this.api.linker;
       if (!provider) return matches;
-      return ownedMatches(this.app, provider, text, matches);
+      return ownedMatches(this.app, provider, text, matches, where);
+    },
+
+    // The editor keeps a span's foreign candidates in a DOM attribute, so they are rebuilt
+    // from JSON rather than handed over as closures. Everything is resolved against the peer
+    // at use time, not at draw time: it may have been disabled since the mark was drawn, and
+    // a row that captions itself from stale data would read differently here than in reading
+    // view.
+    foreignFromAttr(raw, sourcePath, newTab) {
+      if (!raw) return [];
+      let parsed;
+      try { parsed = JSON.parse(raw); } catch (err) { return []; }
+      const peers = discoverLinkers(this.app);
+      return parsed.map((f) => {
+        const peerOf = () => peers.find((p) => p.id === f.id);
+        const ask = (name, fn) => {
+          const peer = peerOf();
+          if (!peer || typeof peer[name] !== 'function') return null;
+          try { return fn(peer); } catch (err) { return null; }
+        };
+        return {
+          label: f.label,
+          source: f.source,
+          describe: (display) => ask('describe', (peer) => peer.describe(f.target, display)),
+          open: () => ask('open', (peer) => peer.open(f.target, sourcePath, newTab)),
+          hover: (ev, row, parent) => ask('hover', (peer) => peer.hover(f.target, ev, row, sourcePath, parent)),
+        };
+      });
     },
 
     // What the linkers that yielded a span to us would have offered there.
-    yieldedIn(text) {
+    yieldedIn(text, where) {
       const provider = this.api && this.api.linker;
       if (!provider) return [];
-      return yieldedCandidates(this.app, provider, text);
+      return yieldedCandidates(this.app, provider, text, where);
     },
 
     processReadingMode(el, ctx) {
@@ -72,9 +101,10 @@ function createHighlight(config) {
       if (!text || text.length < 2) return;
       // protect:true keeps this in step with the materialize path, so the Nth highlighted
       // occurrence here is the Nth occurrence that gets linked.
-      const matches = this.ownSpans(text, this.findMatches(text, selfId, { protect: true }));
+      const where = { path: sourcePath, surface: 'reading' };
+      const matches = this.ownSpans(text, this.findMatches(text, selfId, { protect: true }), where);
       if (!matches.length) return;
-      const yielded = this.yieldedIn(text);
+      const yielded = this.yieldedIn(text, where);
 
       const frag = document.createDocumentFragment();
       let cursor = 0;
@@ -99,16 +129,16 @@ function createHighlight(config) {
             this.chooseTerm(
               candidates.map((c) => (typeof c === 'object' ? { ...c, open: () => c.open(sourcePath, newTab) } : c)),
               newTab ? t('menu.openNewTabTitle') : t('menu.openTitle'),
-              (c) => this.openTerm(c, sourcePath, newTab)
+              (c) => this.openTerm(c, sourcePath, newTab),
+              display
             );
           };
           a.addEventListener('mouseenter', (e) => {
             if (!this.choices) return;
-            this.choices.schedule(candidates.map((c) => (typeof c === 'object' ? {
-              label: c.label,
+            this.choices.schedule(candidates.map((c) => (typeof c === 'object' ? Object.assign({}, c, {
               open: () => c.open(sourcePath, false),
               hover: (ev, row, parent) => c.hover(ev, row, sourcePath, parent),
-            } : c)), e.clientX, e.clientY);
+            }) : c)), e.clientX, e.clientY, display);
           });
           a.addEventListener('mouseleave', () => { if (this.choices) this.choices.leave(); });
           a.addEventListener('click', (e) => pick(e, e.ctrlKey || e.metaKey));
@@ -181,8 +211,9 @@ function createHighlight(config) {
         const tree = syntaxTree(editorView.state);
         for (const { from, to } of editorView.visibleRanges) {
           const text = editorView.state.doc.sliceString(from, to);
-          const yielded = plugin.yieldedIn(text);
-          for (const m of plugin.ownSpans(text, plugin.findMatches(text, selfId))) {
+          const where = { path: activeFile ? activeFile.path : undefined, surface: 'editing' };
+          const yielded = plugin.yieldedIn(text, where);
+          for (const m of plugin.ownSpans(text, plugin.findMatches(text, selfId), where)) {
             const start = from + m.start;
             const end = from + m.end;
             let skip = false;
@@ -201,28 +232,8 @@ function createHighlight(config) {
       const altsOf = (el) => { const v = el.getAttribute(ATTR_ALTS); return v ? v.split('\n') : null; };
       // The opener is resolved at click time, not at draw time: the peer may have been
       // disabled since the mark was drawn.
-      const foreignOf = (el, sourcePath, newTab) => {
-        const raw = el.getAttribute(ATTR_FOREIGN);
-        if (!raw) return [];
-        let parsed;
-        try { parsed = JSON.parse(raw); } catch (err) { return []; }
-        const peers = discoverLinkers(plugin.app);
-        return parsed.map((f) => {
-          const peerOf = () => peers.find((p) => p.id === f.id);
-          return {
-            label: f.label,
-            source: f.source,
-            open: () => {
-              const peer = peerOf();
-              if (peer && typeof peer.open === 'function') peer.open(f.target, sourcePath, newTab);
-            },
-            hover: (ev, row, parent) => {
-              const peer = peerOf();
-              if (peer && typeof peer.hover === 'function') peer.hover(f.target, ev, row, sourcePath, parent);
-            },
-          };
-        });
-      };
+      const foreignOf = (el, sourcePath, newTab) =>
+        plugin.foreignFromAttr(el.getAttribute(ATTR_FOREIGN), sourcePath, newTab);
 
       const candidatesOn = (el, sourcePath) =>
         [targetOfEl(el), ...(altsOf(el) || []), ...foreignOf(el, sourcePath, false)];
@@ -238,7 +249,7 @@ function createHighlight(config) {
         const el = under && under.closest ? under.closest('.' + CM_LINK_CLASS) : null;
         if (!el || !(el.hasAttribute(ATTR_ALTS) || el.hasAttribute(ATTR_FOREIGN))) return;
         const file = plugin.app.workspace.getActiveFile();
-        plugin.choices.schedule(candidatesOn(el, file ? file.path : ''), lastX, lastY);
+        plugin.choices.schedule(candidatesOn(el, file ? file.path : ''), lastX, lastY, el.textContent);
       });
 
       const vp = ViewPlugin.fromClass(
@@ -266,7 +277,7 @@ function createHighlight(config) {
               const alts = altsOf(el) || [];
               const pick = (newTab, title) => {
                 const candidates = [targetOfEl(el), ...alts, ...foreignOf(el, sourcePath, newTab)];
-                plugin.chooseTerm(candidates, title, (c) => plugin.openTerm(c, sourcePath, newTab));
+                plugin.chooseTerm(candidates, title, (c) => plugin.openTerm(c, sourcePath, newTab), el.textContent);
               };
               // Like Obsidian's links: middle-click opens a tab, Ctrl/Cmd+click follows.
               if (e.button === 1) {
@@ -287,7 +298,7 @@ function createHighlight(config) {
                 // The list stands in for a preview, so in the editor it follows the preview's
                 // rule and waits for the modifier. Reading view has no such rule.
                 if (!plugin.choices || !(e.ctrlKey || e.metaKey)) return;
-                plugin.choices.schedule(candidatesOn(el, sourcePath), e.clientX, e.clientY);
+                plugin.choices.schedule(candidatesOn(el, sourcePath), e.clientX, e.clientY, el.textContent);
                 return;
               }
               plugin.hoverTerm(e, el, targetOfEl(el), sourcePath);

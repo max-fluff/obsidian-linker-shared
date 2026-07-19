@@ -28,12 +28,25 @@ function outranks(a, b) {
   return String(a.id) < String(b.id);
 }
 
-// Spans of `text` claimed by a linker that outranks `self`, sorted by start.
-function foreignRanges(app, self, text) {
+// Would `peer` put anything on this surface of this note? Ownership is settled only between
+// the linkers actually working here: a peer that takes a span it will never draw leaves the
+// word claimed by it, dropped by us, and shown by nobody.
+//
+// `where` is `{ path, surface }`. A peer predating `drawsIn`, or one that throws, counts as
+// drawing everywhere — which is what it did before the member existed.
+function drawsHere(peer, where) {
+  if (typeof peer.drawsIn !== 'function') return true;
+  const w = where || {};
+  try { return peer.drawsIn(w.path, w.surface) !== false; } catch (e) { return true; }
+}
+
+// Spans of `text` claimed by a linker that outranks `self` and is drawing here, sorted by
+// start.
+function foreignRanges(app, self, text, where) {
   const ranges = [];
   for (const peer of discoverLinkers(app)) {
     if (peer.id === self.id || !outranks(peer, self)) continue;
-    if (typeof peer.matches !== 'function') continue;
+    if (typeof peer.matches !== 'function' || !drawsHere(peer, where)) continue;
     let matches;
     // A broken peer costs us its ranges, not the highlighter.
     try { matches = peer.matches(text) || []; } catch (e) { matches = []; }
@@ -53,20 +66,20 @@ function overlaps(ranges, s, e) {
   return false;
 }
 
-function ownedMatches(app, self, text, matches) {
+function ownedMatches(app, self, text, matches, where) {
   if (!matches.length) return matches;
-  const foreign = foreignRanges(app, self, text);
+  const foreign = foreignRanges(app, self, text, where);
   if (!foreign.length) return matches;
   return matches.filter((m) => !overlaps(foreign, m.start, m.end));
 }
 
 // Candidates from the peers that yielded a span to us. Each opens and previews through its
 // own plugin — we never interpret another linker's link format.
-function yieldedCandidates(app, self, text) {
+function yieldedCandidates(app, self, text, where) {
   const out = [];
   for (const peer of discoverLinkers(app)) {
     if (peer.id === self.id || outranks(peer, self)) continue;
-    if (typeof peer.matches !== 'function') continue;
+    if (typeof peer.matches !== 'function' || !drawsHere(peer, where)) continue;
     let matches;
     try { matches = peer.matches(text) || []; } catch (e) { matches = []; }
     for (const m of matches) {
@@ -80,6 +93,12 @@ function yieldedCandidates(app, self, text) {
         // again at click time.
         id: peer.id,
         source: peer.displayName || peer.id,
+        // How this row reads in an ambiguity list, asked of its owner and only when a list is
+        // actually drawn — every span on screen produces candidates, few are ever looked at.
+        describe: (display) => {
+          if (typeof peer.describe !== 'function') return null;
+          try { return peer.describe(m.target, display); } catch (e) { return null; }
+        },
         open: (sourcePath, newTab) => { if (typeof peer.open === 'function') peer.open(m.target, sourcePath, newTab); },
         hover: (event, targetEl, sourcePath, hoverParent) => {
           if (typeof peer.hover === 'function') peer.hover(m.target, event, targetEl, sourcePath, hoverParent);
@@ -98,12 +117,12 @@ function candidatesFor(candidates, s, e) {
 // What the other linkers would suggest for a typed word. Obsidian gives the autocomplete
 // popup to the first suggester that triggers and never asks the rest, so whoever is asked
 // serves everyone's candidates.
-function peerSuggestions(app, self, query) {
+function peerSuggestions(app, self, query, sourcePath) {
   const out = [];
   for (const peer of discoverLinkers(app)) {
     if (peer.id === self.id || typeof peer.suggest !== 'function') continue;
     let items;
-    try { items = peer.suggest(String(query || '')) || []; } catch (e) { items = []; }
+    try { items = peer.suggest(String(query || ''), sourcePath) || []; } catch (e) { items = []; }
     for (const it of items) {
       if (!it || typeof it.label !== 'string') continue;
       out.push({
@@ -116,7 +135,13 @@ function peerSuggestions(app, self, query) {
         id: peer.id,
         source: peer.displayName || peer.id,
         precedence: peer.precedence || 0,
-        insert: (display, inTable) => (typeof peer.linkFor === 'function' ? peer.linkFor(it.target, display, inTable) : null),
+        // Answered by the row's owner, including whether to compose a link at all. A peer
+        // that predates `insertFor` has only `linkFor`, which always links — the right
+        // reading for a plugin with no plain-text mode to consult.
+        insert: (display, inTable) => {
+          if (typeof peer.insertFor === 'function') return peer.insertFor(it.target, display, inTable);
+          return typeof peer.linkFor === 'function' ? peer.linkFor(it.target, display, inTable) : null;
+        },
       });
     }
   }
@@ -140,4 +165,4 @@ function siblingLinkers(app, self) {
   return discoverLinkers(app).filter((p) => p.id !== self.id);
 }
 
-module.exports = { LINKER_API, discoverLinkers, outranks, foreignRanges, overlaps, ownedMatches, yieldedCandidates, candidatesFor, peerSuggestions, peersOffering, siblingLinkers };
+module.exports = { LINKER_API, discoverLinkers, outranks, drawsHere, foreignRanges, overlaps, ownedMatches, yieldedCandidates, candidatesFor, peerSuggestions, peersOffering, siblingLinkers };

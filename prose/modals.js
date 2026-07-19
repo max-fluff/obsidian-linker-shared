@@ -16,6 +16,7 @@
 const { Modal } = require('obsidian');
 const { t } = require('../i18n');
 const { inTableCell } = require('../markdown');
+const { captionFor } = require('./choices');
 
 // The "leave it as plain text" option, kept distinct from any real target.
 const SKIP = ' skip';
@@ -184,7 +185,10 @@ function createProseModals(config) {
       // meanings, and which plugin answers for each is machinery they aren't choosing between.
       for (const term of this.opts.terms) {
         const foreign = term && typeof term === 'object';
-        const b = list.createEl('button', { cls: `${cls}-choose-item`, text: foreign ? term.label : term });
+        const { title, note } = captionFor(this.opts.plugin, term, this.opts.display);
+        const b = list.createEl('button', { cls: `${cls}-choose-item` });
+        b.createDiv({ cls: `${cls}-choose-item-title`, text: title });
+        if (note) b.createDiv({ cls: `${cls}-choose-item-note`, text: note });
         b.onclick = async () => {
           this.close();
           if (foreign) term.open();

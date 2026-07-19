@@ -141,15 +141,20 @@ describe('choose-term dialog', () => {
     let chose = null;
     let peerOpened = false;
     const m = new ChooseTermModal({}, {
-      terms: ['Guide#Spawn', { label: 'Spawning', open: () => { peerOpened = true; } }],
+      terms: ['Guide#Spawn', { label: 'Spawning', source: 'Glossary Linker', describe: () => ({ title: 'Spawning', note: 'Term' }), open: () => { peerOpened = true; } }],
       onChoose: (t) => { chose = t; },
+      plugin: { api: { linker: { describe: (target) => ({ title: target.split('#').pop(), note: 'Heading' }) } } },
     });
     m.contentEl = fakeEl();
     m.close = () => {};
     m.onOpen();
 
     const items = flatten(m.contentEl).filter((e) => e.classes.includes('heading-choose-item'));
-    assert.deepStrictEqual(items.map((e) => e.text), ['Guide#Spawn', 'Spawning']);
+    // Ours is described by us, the peer's by the peer — a list of one word's meanings has to
+    // say which is which, and neither side may caption the other's row. The caption is the
+    // kind and where it lives; the plugin's name is machinery the reader is not choosing from.
+    assert.deepStrictEqual(items.map((e) => e.children.map((c) => c.text)),
+      [['Spawn', 'Heading'], ['Spawning', 'Term']]);
 
     await items[0].onclick();
     assert.strictEqual(chose, 'Guide#Spawn');
@@ -157,5 +162,44 @@ describe('choose-term dialog', () => {
 
     await items[1].onclick();
     assert.strictEqual(peerOpened, true, 'a peer’s candidate was opened by us instead of by it');
+  });
+});
+
+describe('a row nobody can describe', () => {
+  it('shows the bare label rather than naming the plugin', () => {
+    // The reader is picking between meanings, not between plugins. A peer too old to describe
+    // itself contributes a plain row; it must not turn into "Heading Linker".
+    const { captionFor } = require('../../prose/choices');
+    assert.deepStrictEqual(
+      captionFor(null, { label: 'Spawning', source: 'Heading Linker' }),
+      { title: 'Spawning', note: '' });
+  });
+});
+
+// The picker and the hover list are two surfaces onto one question. They drifted once — one
+// wiring passed the touched word to the plugin and the other dropped it, so the same row was
+// captioned differently depending on whether the reader hovered or clicked.
+describe('one caption, whichever surface asks', () => {
+  const { captionFor } = require('../../prose/choices');
+  const plugin = {
+    api: {
+      linker: {
+        describe: (target, display) => ({
+          title: target,
+          note: display && display !== target ? `Term · via alias “${display}”` : 'Term',
+        }),
+      },
+    },
+  };
+
+  it('hands the touched word to the owner every time it is asked', () => {
+    assert.deepStrictEqual(captionFor(plugin, 'B', 'A'), { title: 'B', note: 'Term · via alias “A”' });
+    assert.deepStrictEqual(captionFor(plugin, 'B', 'B'), { title: 'B', note: 'Term' });
+  });
+
+  it('asks a peer with the same word it asks us', () => {
+    const seen = [];
+    captionFor(plugin, { label: 'B', describe: (display) => { seen.push(display); return { title: 'B', note: 'Term' }; } }, 'A');
+    assert.deepStrictEqual(seen, ['A'], 'the peer was asked without the word the reader touched');
   });
 });

@@ -6,12 +6,21 @@
 
 const { peerSuggestions } = require('../discover');
 
+// Whether this plugin offers anything for `query` in this note. Asked in two places that
+// must agree: before claiming the popup, and again when a sibling asks for our rows — the
+// sibling owns the popup then, and cannot apply our switches for us.
+function suggestionsAllowed(plugin, query, sourcePath) {
+  if (!plugin.settings.linkSuggest) return false;
+  if (sourcePath && !plugin.inScope(sourcePath)) return false;
+  return query.length >= Math.max(1, plugin.settings.suggestMinChars || 1);
+}
+
 // `own` is this plugin's candidates, already ranked. Peers that outrank us go above them —
 // the priority setting made visible while typing.
-function mergeSuggestions(plugin, query, own, limit = 8) {
+function mergeSuggestions(plugin, query, own, sourcePath, limit = 8) {
   const provider = plugin.api && plugin.api.linker;
   if (!provider) return own;
-  const foreign = peerSuggestions(plugin.app, provider, query);
+  const foreign = peerSuggestions(plugin.app, provider, query, sourcePath);
   if (!foreign.length) return own;
   const mine = provider.precedence || 0;
   const above = foreign.filter((f) => f.precedence > mine);
@@ -19,4 +28,4 @@ function mergeSuggestions(plugin, query, own, limit = 8) {
   return [...above, ...own, ...below].slice(0, limit);
 }
 
-module.exports = { mergeSuggestions };
+module.exports = { mergeSuggestions, suggestionsAllowed };

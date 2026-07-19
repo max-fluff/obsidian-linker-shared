@@ -22,7 +22,7 @@
 
 const { EditorSuggest } = require('obsidian');
 const { inTableCell } = require('../markdown');
-const { mergeSuggestions } = require('./suggest');
+const { mergeSuggestions, suggestionsAllowed } = require('./suggest');
 
 function createProseSuggest(config) {
   const { cls, ownId, collect, noteFor, labelOf, targetOf, displayFor } = config;
@@ -35,8 +35,7 @@ function createProseSuggest(config) {
 
     onTrigger(cursor, editor, file) {
       const plugin = this.plugin;
-      if (!plugin.settings.linkSuggest) return null;
-      if (!file || !plugin.inScope(file.path)) return null;
+      if (!file) return null;
 
       const line = editor.getLine(cursor.line);
       // Only complete at the end of a word — not while the cursor sits inside one.
@@ -44,7 +43,7 @@ function createProseSuggest(config) {
       const m = line.slice(0, cursor.ch).match(/[\p{L}\p{Nd}]+$/u);
       if (!m) return null;
       const query = m[0];
-      if (query.length < Math.max(1, plugin.settings.suggestMinChars || 1)) return null;
+      if (!suggestionsAllowed(plugin, query, file.path)) return null;
 
       // A word glued to a sigil belongs to another suggester (a sigil linker's trigger, a
       // tag, math), not to prose — yield so it keeps the slot.
@@ -58,23 +57,24 @@ function createProseSuggest(config) {
 
       // Built here rather than in getSuggestions: claiming the popup with nothing to offer
       // would silence a sibling suggester that does know this word.
-      const items = this.merged(query);
+      const items = this.merged(query, file.path);
       if (!items.length) return null;
       this.cached = { query, items };
 
       return { start: { line: cursor.line, ch: cursor.ch - query.length }, end: cursor, query };
     }
 
-    // Ours plus every sibling linker's, in one list.
-    merged(query) {
-      return mergeSuggestions(this.plugin, query, collect(this.plugin, query, ownId(this.plugin)));
+    // Ours plus every sibling linker's, in one list. `sourcePath` travels with the query so
+    // each sibling can decline a note outside its own scope — we are only in scope for us.
+    merged(query, sourcePath) {
+      return mergeSuggestions(this.plugin, query, collect(this.plugin, query, ownId(this.plugin)), sourcePath);
     }
 
     getSuggestions(context) {
       // onTrigger already built these to decide whether to trigger at all; recompute only if
       // something moved on between the two calls.
       if (this.cached && this.cached.query === context.query) return this.cached.items;
-      return this.merged(context.query);
+      return this.merged(context.query, context.file && context.file.path);
     }
 
     renderSuggestion(item, el) {
@@ -89,15 +89,22 @@ function createProseSuggest(config) {
       if (!ctx) return;
       const editor = ctx.editor;
       const inTable = inTableCell(editor.getValue(), editor.posToOffset(ctx.start));
-      // A peer's candidate is written by the peer: only it knows whether its target is a
-      // term title, a File#Heading or something else again. `display: null` from a peer
-      // means "keep what the reader typed".
-      const link = item.insert
-        ? item.insert(item.display == null ? ctx.query : item.display, inTable)
-        : this.plugin.wikiLink(targetOf(item), displayFor(item, ctx.query), inTable);
-      if (!link) return;
-      editor.replaceRange(link, ctx.start, ctx.end);
-      editor.setCursor(editor.offsetToPos(editor.posToOffset(ctx.start) + link.length));
+      // Each row is composed by the plugin that owns it, our switch included — Obsidian hands
+      // the popup to whichever suggester triggered first, so ours must not govern a peer's row.
+      let text;
+      if (item.insert) {
+        // `display: null` from a peer means "keep what the reader typed".
+        text = item.insert(item.display == null ? ctx.query : item.display, inTable);
+      } else {
+        const display = displayFor(item, ctx.query);
+        // Plain text needs no table escaping: a display never carries the pipe that splits a row.
+        text = this.plugin.settings.suggestPlainText
+          ? display
+          : this.plugin.wikiLink(targetOf(item), display, inTable);
+      }
+      if (!text) return;
+      editor.replaceRange(text, ctx.start, ctx.end);
+      editor.setCursor(editor.offsetToPos(editor.posToOffset(ctx.start) + text.length));
     }
   };
 }

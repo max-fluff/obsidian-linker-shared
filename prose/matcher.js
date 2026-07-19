@@ -48,10 +48,24 @@ function inMatch(line, col, re) {
   return false;
 }
 
+// Acronym-shaped ("IT", "NASA"). Two letters minimum, or every capitalised sentence opener
+// would qualify.
+function isAcronymish(text) {
+  const letters = [...text].filter((ch) => /\p{L}/u.test(ch));
+  if (letters.length < 2) return false;
+  const upper = letters.filter((ch) => ch !== ch.toLowerCase() && ch === ch.toUpperCase()).length;
+  return upper / letters.length > 0.75;
+}
+
+// Decided per form, not per term: an acronym alias stays cased even when its term is not.
+// `cs` and `caseText` come off the index entry, so a plugin that sets neither is unaffected.
+const smartCaseFits = (plugin, c, surface) => !plugin.settings.smartCase || !c.cs || surface === c.caseText;
+
 function createMatcher(config) {
   const { idOf, selfIdOf, fieldsOf } = config;
   const accepts = config.accepts || (() => true);
-  const caseFits = config.caseFits || (() => true);
+  // Smart case is the family rule; a plugin only passes its own if it wants a different one.
+  const caseFits = config.caseFits || smartCaseFits;
 
   return {
     // Keys for a word: the union from every language that claims it (same-script
@@ -78,6 +92,15 @@ function createMatcher(config) {
     tokenizeForm(form) {
       const words = [...form.matchAll(/[\p{L}\p{Nd}]+/gu)].map((m) => m[0]);
       return words.map((raw) => ({ raw, keys: this.keysFor(raw) }));
+    },
+
+    // The fields every index entry carries for one written form, or null if the form holds
+    // no word at all. Built here rather than by each plugin's index: a forgotten `cs` or
+    // `caseText` disables smart case for that form silently, with nothing to notice.
+    formEntry(form) {
+      const words = this.tokenizeForm(form);
+      if (!words.length) return null;
+      return { words, wordCount: words.length, cs: isAcronymish(form), caseText: form };
     },
 
     // Every term id whose form matches `text`, `except` one. Runs the same scan as the
@@ -239,4 +262,4 @@ function createMatcher(config) {
   };
 }
 
-module.exports = { createMatcher };
+module.exports = { createMatcher, isAcronymish, smartCaseFits };

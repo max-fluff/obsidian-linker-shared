@@ -52,6 +52,7 @@ const stub = {
   MarkdownRenderChild: class { constructor(containerEl) { this.containerEl = containerEl; } },
   Platform: { isMobile: false, isDesktop: true },
   debounce: (fn) => fn, normalizePath: (p) => p, moment: () => ({ format: () => '' }),
+  setIcon: noop,
   prepareFuzzySearch: () => () => null, loadPdfJs: () => Promise.resolve(null),
 };
 stub.Plugin.prototype.addStatusBarItem = () => elLike();
@@ -107,7 +108,9 @@ const app = {
     trigger: noop, iterateAllLeaves: noop, getActiveViewOfType: () => null,
     registerHoverLinkSource: noop, getLeavesOfType: () => [], detachLeavesOfType: noop,
   },
-  vault: { on: () => ({}), getMarkdownFiles: () => [], adapter: { getBasePath: () => 'C:/vault' }, cachedRead: () => Promise.resolve('') },
+  // getAbstractFileByPath returns null rather than being absent: the per-note opt-out reads
+  // frontmatter through it on every scope check, so a missing one throws inside `matches`.
+  vault: { on: () => ({}), getMarkdownFiles: () => [], adapter: { getBasePath: () => 'C:/vault' }, cachedRead: () => Promise.resolve(''), getAbstractFileByPath: () => null },
   metadataCache: { on: () => ({}), getFileCache: () => null, getFirstLinkpathDest: () => null },
 };
 
@@ -138,6 +141,95 @@ function recordingMenu() {
   return menu;
 }
 
+// A Setting that records what was built and keeps the controls' callbacks reachable, so a
+// test can assert both what a settings section renders and what changing a control does.
+// Install it over the stub's `Setting` *before* requiring the module under test: the shared
+// renderers destructure `Setting` from 'obsidian' at load time. Rows collect on the class,
+// so a test must `reset()` before it renders or it reads the previous test's.
+class RecordingSetting {
+  constructor() {
+    this.entry = { name: '', desc: '', heading: false, controls: [], classes: [] };
+    RecordingSetting.entries.push(this.entry);
+    const addClass = (v) => { this.entry.classes.push(v); };
+    this.settingEl = Object.assign(elLike(), { addClass });
+    this.nameEl = Object.assign(elLike(), { addClass });
+    this.controlEl = elLike();
+  }
+
+  setName(v) { this.entry.name = String(v); return this; }
+  setDesc(v) { this.entry.desc = String(v); return this; }
+  setHeading() { this.entry.heading = true; return this; }
+
+  addDropdown(cb) {
+    const c = { type: 'dropdown', options: [], value: null };
+    const api = {
+      addOption: (k, label) => { c.options.push({ key: k, label }); return api; },
+      setValue: (v) => { c.value = v; return api; },
+      onChange: (fn) => { c.change = fn; return api; },
+    };
+    this.entry.controls.push(c);
+    cb(api);
+    return this;
+  }
+
+  addToggle(cb) {
+    const c = { type: 'toggle', value: null };
+    const api = {
+      setValue: (v) => { c.value = v; return api; },
+      onChange: (fn) => { c.change = fn; return api; },
+    };
+    this.entry.controls.push(c);
+    cb(api);
+    return this;
+  }
+
+  addText(cb) { return this.textLike(cb, 'text'); }
+  addTextArea(cb) { return this.textLike(cb, 'textarea'); }
+
+  textLike(cb, type) {
+    const c = { type, value: null, inputEl: { type: '', min: '', rows: 0 } };
+    const api = {
+      inputEl: c.inputEl,
+      setValue: (v) => { c.value = v; return api; },
+      onChange: (fn) => { c.change = fn; return api; },
+    };
+    this.entry.controls.push(c);
+    cb(api);
+    return this;
+  }
+
+  // Both button flavours record the same shape; a plain button also carries a label.
+  addExtraButton(cb) {
+    const c = { type: 'button' };
+    const api = {
+      setButtonText: (v) => { c.label = v; return api; },
+      setIcon: (v) => { c.icon = v; return api; },
+      setTooltip: (v) => { c.tooltip = v; return api; },
+      setDisabled: (v) => { c.disabled = v; return api; },
+      setCta: () => api,
+      onClick: (fn) => { c.click = fn; return api; },
+    };
+    this.entry.controls.push(c);
+    cb(api);
+    return this;
+  }
+
+  addButton(cb) { return this.addExtraButton(cb); }
+
+  static reset() { RecordingSetting.entries.length = 0; }
+
+  static names() { return RecordingSetting.entries.map((e) => e.name); }
+
+  // A control on the setting named `name`. Rows that carry several (a language sits behind
+  // two reorder buttons) need `type` to say which one is meant.
+  static control(name, type) {
+    const found = (RecordingSetting.entries.find((e) => e.name === name) || { controls: [] }).controls;
+    return type ? found.find((c) => c.type === type) : found[0];
+  }
+}
+
+RecordingSetting.entries = [];
+
 // The bits of the editor the menu handlers ask about.
 function fakeEditor(line, ch) {
   const at = { line: 0, ch };
@@ -151,4 +243,4 @@ function fakeEditor(line, ch) {
   };
 }
 
-module.exports = { obsidianStub: stub, cmStub: cm, fakeApp: app, installStubs, recordingMenu, fakeEditor };
+module.exports = { obsidianStub: stub, cmStub: cm, fakeApp: app, installStubs, recordingMenu, RecordingSetting, elLike, fakeEditor };

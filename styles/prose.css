@@ -88,9 +88,17 @@ a.%p%-link.internal-link:hover {
   margin: 8px 0;
 }
 
+/* A button, so it arrives with Obsidian's own layout: inline-flex puts the caption beside the
+   title, nowrap keeps a long title from breaking, and the fixed control height clips whatever
+   wraps anyway. A row here is a block of text, not a control. */
 .%p%-choose-item {
-  text-align: left;
+  display: block;
+  box-sizing: border-box;
   width: 100%;
+  height: auto;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .%p%-preview-table td,
@@ -183,4 +191,12 @@ a.%p%-link.internal-link:hover {
 
 .%p%-choices-item:hover {
   background: var(--background-modifier-hover);
+}
+
+/* Second line of a candidate row: what tells this meaning from the one under it — the kind,
+   and the note it lives in. Muted and small so the meanings still scan as a list. */
+.%p%-choices-item-note,
+.%p%-choose-item-note {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
 }

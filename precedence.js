@@ -6,6 +6,7 @@
 // their own number and read the others', so they cannot disagree.
 
 const { discoverLinkers, outranks, siblingLinkers } = require('./discover');
+const { t } = require('./i18n');
 
 // Gap left between ranks so a later move has somewhere to go without landing on a tie.
 const STEP = 10;
@@ -19,18 +20,49 @@ function rankedLinkers(app) {
   });
 }
 
-// The precedence `self` has to store to sit at `index` of the order. Midway between the two
-// neighbours rather than a fixed step, because their values are theirs, not ours, and may
-// already sit closer together than STEP.
+// Where `self` would land if it stored `value` — counted through `outranks` itself, so the
+// answer cannot drift from how the order is actually resolved.
+function indexForPrecedence(others, self, value) {
+  const hypothetical = { precedence: value, id: self.id };
+  return others.filter((o) => outranks(o, hypothetical)).length;
+}
+
+// The precedence `self` has to store to sit at `index` of the order.
+//
+// Arithmetic alone cannot answer this. Peers that share a number are ordered by id, so a
+// value landing midway between two equal neighbours reproduces the order it started from —
+// the reader clicks and nothing moves. Which positions a number reaches also depends on our
+// own id, which no formula over the neighbours' values sees. So candidates are tried against
+// the real comparison instead.
 function precedenceForIndex(app, self, index) {
   const others = rankedLinkers(app).filter((p) => p.id !== self.id);
   if (!others.length) return self.precedence || 0;
+
   const at = Math.max(0, Math.min(index, others.length));
-  const above = at > 0 ? (others[at - 1].precedence || 0) : null;
-  const below = at < others.length ? (others[at].precedence || 0) : null;
-  if (above === null) return below + STEP;
-  if (below === null) return above - STEP;
-  return (above + below) / 2;
+  const values = others.map((p) => p.precedence || 0);
+
+  // Gaps and ends first: they leave the order spread out, so the next move has somewhere to
+  // land. Joining a tie is a last resort — it is what makes a run that later moves stick in.
+  const candidates = [values[0] + STEP, values[values.length - 1] - STEP];
+  for (let i = 1; i < values.length; i++) {
+    if (values[i - 1] !== values[i]) candidates.push((values[i - 1] + values[i]) / 2);
+  }
+  for (const v of values) candidates.push(v);
+
+  // An exact hit wins outright. Failing that the slot sits inside a run of equal precedences,
+  // which our own number cannot split, so we take the nearest slot in the direction asked —
+  // moving further than requested beats leaving the click doing nothing.
+  const from = currentIndex(app, self);
+  const wanted = Math.sign(at - from);
+  let best = null;
+  let bestLanded = null;
+  for (const v of candidates) {
+    const landed = indexForPrecedence(others, self, v);
+    if (landed === at) return v;
+    if (Math.sign(landed - from) !== wanted) continue;
+    if (best === null || Math.abs(landed - at) < Math.abs(bestLanded - at)) { best = v; bestLanded = landed; }
+  }
+  return best === null ? (self.precedence || 0) : best;
 }
 
 function currentIndex(app, self) {
@@ -84,4 +116,22 @@ function renderPrecedence(containerEl, opts) {
   draw();
 }
 
-module.exports = { STEP, rankedLinkers, precedenceForIndex, currentIndex, renderPrecedence };
+// The same control with the family's own wording filled in. All four plugins render it
+// identically apart from their CSS prefix and where they store the number, so only those
+// two are asked for; `renderPrecedence` stays label-agnostic for anyone outside the family.
+function renderPrecedenceSetting(containerEl, opts) {
+  renderPrecedence(containerEl, {
+    app: opts.app,
+    provider: opts.provider,
+    Setting: opts.Setting,
+    cls: opts.cls,
+    name: t('set.precedence.name'),
+    desc: t('set.precedence.desc'),
+    otherDesc: t('set.precedence.other'),
+    upTooltip: t('set.precedence.up'),
+    downTooltip: t('set.precedence.down'),
+    save: opts.save,
+  });
+}
+
+module.exports = { STEP, rankedLinkers, precedenceForIndex, currentIndex, renderPrecedence, renderPrecedenceSetting };

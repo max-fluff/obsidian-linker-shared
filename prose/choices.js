@@ -9,9 +9,33 @@ const { Popover } = require('../popover');
 const { Component } = require('obsidian');
 
 // A candidate is one of our own targets (a plain string, acted on through the constructor
-// callbacks) or a peer's `{ label, open(), hover(event, el, hoverParent) }`, already bound by
-// the caller. The reader is picking a meaning, not a plugin, so both kinds draw identically.
+// callbacks) or a peer's `{ label, describe(), open(), hover(...) }`, already bound by the
+// caller. The reader is picking a meaning, not a plugin, so both kinds draw identically.
 const labelOf = (c) => (typeof c === 'object' && c ? c.label : c);
+
+// The two lines a row shows, wherever a row is drawn.
+//
+// Every candidate is captioned by whoever owns it — ours through our own provider, a peer's
+// through its — because only the owner knows whether its target is a heading in a file, a
+// term, or something reached through an alias. `display` is the word the reader actually
+// touched, which is what lets an owner say "you clicked A, this is B under its alias A".
+//
+// Takes the plugin rather than a callback on purpose: every surface that lists candidates
+// asks the same question, and hand-wiring it per surface is how the hover list and the picker
+// came to caption the same row two different ways.
+function captionFor(plugin, c, display) {
+  const provider = plugin && plugin.api && plugin.api.linker;
+  let own = null;
+  if (typeof c === 'object' && c !== null) {
+    own = typeof c.describe === 'function' ? c.describe(display) : null;
+  } else if (provider && typeof provider.describe === 'function') {
+    own = provider.describe(c, display);
+  }
+  if (own && own.title) return { title: own.title, note: own.note || '' };
+  // Never the plugin's name: the reader is choosing between meanings, not between plugins,
+  // and which one answers is machinery they are not picking from.
+  return { title: labelOf(c), note: '' };
+}
 
 class ChoicePopover {
   // `hover(target, event, el, hoverParent)` previews one of our own targets; `open(target)`
@@ -42,12 +66,12 @@ class ChoicePopover {
     if (this.component) { this.component.unload(); this.component = null; }
   }
 
-  schedule(candidates, x, y) {
+  schedule(candidates, x, y, display) {
     if (!candidates || candidates.length < 2) return;
     // NUL as the separator: labels can contain spaces, and two different candidate lists
     // must never collapse onto one key.
     const key = candidates.map(labelOf).join('\0');
-    this.pop.schedule(key, x, y, (el) => this.build(candidates, el));
+    this.pop.schedule(key, x, y, (el) => this.build(candidates, el, display));
   }
 
   // A fresh component per preview, so opening one closes the last instead of stacking one
@@ -59,7 +83,7 @@ class ChoicePopover {
     return this.component;
   }
 
-  build(candidates, el) {
+  build(candidates, el, display) {
     this.unloadComponent();
 
     const cls = this.opts.cls;
@@ -68,7 +92,10 @@ class ChoicePopover {
 
     for (const c of candidates) {
       const foreign = typeof c === 'object' && c !== null;
-      const row = list.createDiv({ cls: `${cls}-choices-item`, text: labelOf(c) });
+      const { title, note } = captionFor(this.opts.plugin, c, display);
+      const row = list.createDiv({ cls: `${cls}-choices-item` });
+      row.createDiv({ cls: `${cls}-choices-item-title`, text: title });
+      if (note) row.createDiv({ cls: `${cls}-choices-item-note`, text: note });
       row.addEventListener('mouseenter', (event) => {
         const parent = this.newComponent();
         if (foreign) {
@@ -88,4 +115,4 @@ class ChoicePopover {
   }
 }
 
-module.exports = { ChoicePopover };
+module.exports = { ChoicePopover, captionFor };
