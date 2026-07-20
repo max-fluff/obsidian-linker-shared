@@ -11,6 +11,8 @@ const BUILTIN_LANGUAGES = [
   require('./languages/es.js'),
   require('./languages/de.js'),
   require('./languages/fr.js'),
+  require('./languages/la.js'),
+  require('./languages/el.js'),
 ];
 
 module.exports = { BUILTIN_LANGUAGES };

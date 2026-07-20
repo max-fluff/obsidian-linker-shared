@@ -51,6 +51,7 @@ deterministic and derived from the lowercased word.
 ## Porting an existing stemmer
 
 The bundled `es`/`de`/`fr` modules are JavaScript ports of Apache Lucene light
-stemmers; `en`/`ru` port the Porter/Snowball stemmers. If you port a published
-algorithm, keep its attribution and license notice in the file header (see the
-existing modules), and make sure the license permits redistribution.
+stemmers; `en`/`ru` port the Porter/Snowball stemmers; `la` ports the Schinke Latin
+stemmer. `uk` and `el` are the plugin's own light suffix stemmers. If you port a
+published algorithm, keep its attribution and license notice in the file header (see
+the existing modules), and make sure the license permits redistribution.

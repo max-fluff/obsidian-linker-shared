@@ -67,12 +67,42 @@ function strip(word) {
   return w;
 }
 
+// Each form keys to the singular, so "indices" resolves to "index", not the Porter stem
+// "indic" it shares with indicate/indicator. Two-singular homographs (axes, bases) stay out.
+const CLASSICAL = [
+  ['cactus', 'cacti'], ['nucleus', 'nuclei'], ['radius', 'radii'], ['stimulus', 'stimuli'],
+  ['fungus', 'fungi'], ['alumnus', 'alumni'], ['syllabus', 'syllabi'], ['bacillus', 'bacilli'],
+  ['locus', 'loci'], ['terminus', 'termini'],
+  ['datum', 'data'], ['bacterium', 'bacteria'], ['curriculum', 'curricula'],
+  ['memorandum', 'memoranda'], ['stratum', 'strata'], ['spectrum', 'spectra'],
+  ['erratum', 'errata'], ['symposium', 'symposia'], ['millennium', 'millennia'],
+  ['ovum', 'ova'], ['quantum', 'quanta'],
+  ['phenomenon', 'phenomena'], ['criterion', 'criteria'], ['ganglion', 'ganglia'],
+  ['automaton', 'automata'],
+  ['index', 'indices', 'indexes'], ['matrix', 'matrices'], ['appendix', 'appendices', 'appendixes'],
+  ['vertex', 'vertices', 'vertexes'], ['apex', 'apices', 'apexes'],
+  ['cortex', 'cortices'], ['helix', 'helices'],
+  ['corpus', 'corpora'], ['genus', 'genera'],
+  ['formula', 'formulae'], ['larva', 'larvae'], ['alga', 'algae'], ['vertebra', 'vertebrae'],
+  ['nebula', 'nebulae'], ['antenna', 'antennae'],
+  ['thesis', 'theses'], ['hypothesis', 'hypotheses'], ['analysis', 'analyses'],
+  ['crisis', 'crises'], ['diagnosis', 'diagnoses'], ['parenthesis', 'parentheses'],
+  ['ellipsis', 'ellipses'], ['synopsis', 'synopses'],
+  ['schema', 'schemata'], ['stigma', 'stigmata'], ['dogma', 'dogmata'],
+];
+const IRREGULAR = new Map();
+for (const [sing, ...plurals] of CLASSICAL) {
+  IRREGULAR.set(sing, sing);
+  for (const p of plurals) IRREGULAR.set(p, sing);
+}
+
 function stemKeys(word) {
   return [stem(word)];
 }
 
 function lemma(word) {
-  return stem(word.toLowerCase());
+  const w = word.toLowerCase();
+  return IRREGULAR.get(w) || stem(w);
 }
 
 module.exports = {
@@ -83,6 +113,8 @@ module.exports = {
   keys(word, mode) {
     const w = word.toLowerCase();
     if (mode === 'exact') return [w];
+    const canon = IRREGULAR.get(w);
+    if (canon) return [canon];
     if (mode === 'endingStrip') return [strip(w)];
     return stemKeys(w);
   },
