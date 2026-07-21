@@ -90,14 +90,47 @@ const CLASSICAL = [
   ['ellipsis', 'ellipses'], ['synopsis', 'synopses'],
   ['schema', 'schemata'], ['stigma', 'stigmata'], ['dogma', 'dogmata'],
 ];
+const GERMANIC = [
+  ['mouse', 'mice'], ['louse', 'lice'],
+  ['foot', 'feet'], ['tooth', 'teeth'], ['goose', 'geese'],
+  ['man', 'men'], ['woman', 'women'],
+  ['child', 'children'], ['ox', 'oxen'], ['person', 'people'],
+];
+// leaves (leaf/leave) and staves (staff/stave) have two singulars, so they stay out.
+const FVES = [
+  ['wolf', 'wolves'], ['calf', 'calves'], ['half', 'halves'], ['shelf', 'shelves'],
+  ['elf', 'elves'], ['loaf', 'loaves'], ['thief', 'thieves'], ['self', 'selves'],
+  ['scarf', 'scarves'], ['wharf', 'wharves'], ['hoof', 'hooves'],
+  ['knife', 'knives'], ['life', 'lives'], ['wife', 'wives'],
+];
 const IRREGULAR = new Map();
-for (const [sing, ...plurals] of CLASSICAL) {
+for (const [sing, ...plurals] of [...CLASSICAL, ...GERMANIC, ...FVES]) {
   IRREGULAR.set(sing, sing);
   for (const p of plurals) IRREGULAR.set(p, sing);
 }
 
-function stemKeys(word) {
-  return [stem(word)];
+// Words the rules below would take apart into a real but unrelated word.
+const KEEP_WHOLE = new Set(['omen', 'amen', 'ramen', 'carmen', 'dolmen', 'nova', 'bases', 'phases']);
+
+// A compound pluralises its last word, so the tables read as suffix rules too.
+const COMPOUND = new RegExp(
+  '^(.+)(' + [...IRREGULAR.keys()]
+    .filter((form) => IRREGULAR.get(form) !== form)
+    .sort((a, b) => b.length - a.length)
+    .join('|') + ')$',
+);
+
+// An open class in scientific prose (prognosis, fibrosis, metastasis), so a rule not a table.
+const GREEK_PLURAL = /.ses$/;
+
+// The coined singular is reduced like any other word, or dormouse and dormice key apart.
+function derivedKeys(word, reduce) {
+  if (KEEP_WHOLE.has(word)) return [];
+  const derived = new Set();
+  const m = COMPOUND.exec(word);
+  if (m) derived.add(m[1] + IRREGULAR.get(m[2]));
+  if (GREEK_PLURAL.test(word)) derived.add(word.slice(0, -3) + 'sis');
+  return [...derived].map(reduce);
 }
 
 function lemma(word) {
@@ -115,8 +148,8 @@ module.exports = {
     if (mode === 'exact') return [w];
     const canon = IRREGULAR.get(w);
     if (canon) return [canon];
-    if (mode === 'endingStrip') return [strip(w)];
-    return stemKeys(w);
+    const reduce = mode === 'endingStrip' ? strip : stem;
+    return [...new Set([reduce(w), ...derivedKeys(w, reduce)])];
   },
   lemma,
 };

@@ -43,6 +43,84 @@ describe('en — classical plurals', () => {
   });
 });
 
+describe('en — irregular and compound plurals', () => {
+  it('links irregular native plurals to their singular', () => {
+    for (const [a, b] of [
+      ['mouse', 'mice'], ['louse', 'lice'], ['foot', 'feet'], ['tooth', 'teeth'],
+      ['goose', 'geese'], ['man', 'men'], ['woman', 'women'],
+      ['child', 'children'], ['ox', 'oxen'], ['person', 'people'],
+    ]) assert.ok(links(en, a, b), `${a} ~ ${b}`);
+  });
+
+  it('keeps an irregular plural out of unrelated stem families', () => {
+    assert.ok(!links(en, 'men', 'mental'));
+    assert.ok(!links(en, 'feet', 'feed'));
+  });
+
+  it('links -f/-ves plurals to their singular', () => {
+    for (const [a, b] of [
+      ['wolf', 'wolves'], ['calf', 'calves'], ['half', 'halves'], ['shelf', 'shelves'],
+      ['elf', 'elves'], ['loaf', 'loaves'], ['thief', 'thieves'], ['self', 'selves'],
+      ['scarf', 'scarves'], ['wharf', 'wharves'], ['hoof', 'hooves'],
+      ['knife', 'knives'], ['life', 'lives'], ['wife', 'wives'],
+    ]) assert.ok(links(en, a, b), `${a} ~ ${b}`);
+  });
+
+  it('leaves a -ves form with two singulars unlinked', () => {
+    assert.ok(!links(en, 'leaf', 'leaves'));
+    assert.ok(!links(en, 'staff', 'staves'));
+  });
+
+  it('links a compound through the plural of its last word', () => {
+    for (const [a, b] of [
+      ['fireman', 'firemen'], ['chairwoman', 'chairwomen'], ['gunman', 'gunmen'],
+      ['grandchild', 'grandchildren'], ['stepchild', 'stepchildren'],
+      ['dormouse', 'dormice'], ['clubfoot', 'clubfeet'], ['bucktooth', 'buckteeth'],
+      ['bookshelf', 'bookshelves'], ['housewife', 'housewives'], ['werewolf', 'werewolves'],
+      ['penknife', 'penknives'], ['headscarf', 'headscarves'],
+      ['salesperson', 'salespeople'], ['businessperson', 'businesspeople'],
+    ]) assert.ok(links(en, a, b), `${a} ~ ${b}`);
+  });
+
+  it('links a compound whose last word no table lists', () => {
+    for (const [a, b] of [
+      ['synthesis', 'syntheses'], ['prosthesis', 'prostheses'],
+      ['metadatum', 'metadata'], ['substratum', 'substrata'],
+      ['cyanobacterium', 'cyanobacteria'], ['submatrix', 'submatrices'],
+    ]) assert.ok(links(en, a, b), `${a} ~ ${b}`);
+  });
+
+  it('adds a compound key without dropping the one a look-alike had', () => {
+    assert.ok(links(en, 'specimen', 'specimens'));
+    assert.ok(links(en, 'regimen', 'regimens'));
+    assert.ok(!links(en, 'specimen', 'fireman'));
+  });
+
+  it('holds back a word that would come apart into a real, unrelated one', () => {
+    assert.ok(!links(en, 'omen', 'oman'));
+    assert.ok(!links(en, 'ramen', 'raman'));
+    assert.ok(!links(en, 'dolmen', 'dolman'));
+  });
+
+  it('takes a compound however short its first word', () => {
+    assert.ok(links(en, 'axman', 'axmen'));
+  });
+
+  it('links a Greek -sis noun no table lists to its plural', () => {
+    for (const [a, b] of [
+      ['genesis', 'geneses'], ['neurogenesis', 'neurogeneses'],
+      ['prognosis', 'prognoses'], ['metastasis', 'metastases'],
+      ['psychosis', 'psychoses'], ['symbiosis', 'symbioses'],
+      ['sclerosis', 'scleroses'], ['fibrosis', 'fibroses'],
+    ]) assert.ok(links(en, a, b), `${a} ~ ${b}`);
+  });
+
+  it('keeps bases on base, not on basis', () => {
+    assert.ok(links(en, 'bases', 'base'));
+    assert.ok(!links(en, 'bases', 'basis'));
+  });
+});
+
 describe('la — Latin morphology', () => {
   it('satisfies the language contract', () => {
     assert.strictEqual(validateLanguage(la), null);
