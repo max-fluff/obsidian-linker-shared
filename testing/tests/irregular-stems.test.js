@@ -63,6 +63,22 @@ describe('ru — irregular plurals', () => {
   });
 });
 
+describe('ru — young animals', () => {
+  it('swaps the whole -ёнок suffix for the -ята plural', () => {
+    for (const [a, b] of [
+      ['ребёнок', 'ребята'], ['котёнок', 'котята'], ['телёнок', 'телята'],
+      ['гусёнок', 'гусята'], ['цыплёнок', 'цыплята'], ['поросёнок', 'поросята'],
+      ['мышонок', 'мышата'], ['зайчонок', 'зайчата'], ['медвежонок', 'медвежата'],
+      ['волчонок', 'волчата'], ['щенок', 'щенята'],
+    ]) assert.ok(links(ru, a, b), `${a} ~ ${b}`);
+  });
+
+  it('leaves звонок out of it, keeping only its fleeting vowel', () => {
+    assert.ok(!links(ru, 'звонок', 'звать'));
+    assert.ok(links(ru, 'звонок', 'звонка'));
+  });
+});
+
 describe('uk — irregular plurals', () => {
   it('links suppletive and stem-growing nouns', () => {
     paradigm(uk, ['людина', 'люди']);

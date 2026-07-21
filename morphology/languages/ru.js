@@ -90,6 +90,7 @@ const IRREGULAR_STEMS = new Map([
   ['небо', 'небес'], ['чудо', 'чудес'], ['тело', 'телес'],
   ['друг', 'друз'], ['сын', 'сынов'], ['ухо', 'уш'], ['око', 'оч'],
   ['хозяин', 'хозяев'],
+  ['щенок', 'щенят'],
 ]);
 for (const w of ['имя', 'время', 'семя', 'знамя', 'племя', 'стремя', 'темя', 'бремя', 'вымя', 'пламя']) {
   IRREGULAR_STEMS.set(w, w.slice(0, -1) + 'ен');
@@ -101,7 +102,6 @@ const KEEP_WHOLE = new Set(['урок', 'порок']);
 // A fleeting vowel is productive (песок/песка, отец/отца), so it takes a rule. Every
 // candidate is added, never substituted: исток keeps its key and gains one matching nothing.
 function fleetingStems(word) {
-  if (KEEP_WHOLE.has(word)) return [];
   const out = [];
   let m = /^(.+)о([кцнлбмртвшжгх])$/.exec(word);
   if (m) out.push(m[1] + m[2]);
@@ -115,13 +115,28 @@ function fleetingStems(word) {
   return out;
 }
 
+// Not young animals, and the rule would hand them another word's stem: звонок would reach звать.
+const NOT_YOUNG = new Set(['звонок']);
+
+// A young animal swaps the whole -ёнок suffix for -ята, and the pattern stays productive,
+// so it takes a rule. Read after the ё is folded away, hence -енок rather than -ёнок.
+function youngStems(word) {
+  if (NOT_YOUNG.has(word)) return [];
+  let m = /^(.+)енок$/.exec(word);
+  if (m) return [m[1] + 'ят'];
+  m = /^(.+)онок$/.exec(word);
+  if (m) return [m[1] + 'ат'];
+  return [];
+}
+
 // Over-short keys are dropped for the reason stemKeys drops an over-short stem.
 function derivedStems(word) {
   const w = word.replace(/ё/g, 'е');
   const out = [];
   const irregular = IRREGULAR_STEMS.get(w);
   if (irregular) out.push(irregular);
-  for (const c of fleetingStems(w)) if (c.length >= 3) out.push(c);
+  if (KEEP_WHOLE.has(w)) return out;
+  for (const c of [...fleetingStems(w), ...youngStems(w)]) if (c.length >= 3) out.push(c);
   return out;
 }
 

@@ -44,7 +44,8 @@ module.exports = {
   keys(word, mode) {
     const w = word.toLowerCase();
     if (mode === 'exact') return [w];
-    const base = mode === 'endingStrip' ? [strip(w)] : [...new Set([strip(w), ...alternations(strip(w))])];
+    const stem = strip(w);
+    const base = mode === 'endingStrip' ? [stem] : [...new Set([stem, ...alternations(stem)])];
     const extra = IRREGULAR.get(bareApostrophe(w));
     return extra && !base.includes(extra) ? [...base, extra] : base;
   },
