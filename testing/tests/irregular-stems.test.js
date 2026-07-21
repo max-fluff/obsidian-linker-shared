@@ -16,7 +16,7 @@ const paradigm = (lang, forms) => {
 };
 
 describe('ru — fleeting vowels', () => {
-  it('holds a noun together across the vowel it drops', () => {
+  it('links a noun across the vowel it drops', () => {
     paradigm(ru, ['песок', 'песка', 'пески']);
     paradigm(ru, ['кусок', 'куска', 'куски']);
     paradigm(ru, ['цветок', 'цветка', 'цветки']);
@@ -26,23 +26,23 @@ describe('ru — fleeting vowels', () => {
     paradigm(ru, ['ребёнок', 'ребёнка', 'ребёнку']);
   });
 
-  it('reaches the forms that swap the vowel for ь or й', () => {
+  it('links the forms that swap the vowel for ь or й', () => {
     paradigm(ru, ['палец', 'пальца', 'пальцы']);
     paradigm(ru, ['боец', 'бойца', 'бойцы']);
   });
 
-  it('leaves a word alone when the reduced form is another word', () => {
+  it('leaves a word whole when its reduced form is another word', () => {
     assert.ok(!links(ru, 'урок', 'урка'));
     assert.ok(!links(ru, 'порок', 'порка'));
   });
 
-  it('does not let a flower become a colour', () => {
+  it('keeps цветок off цвет', () => {
     assert.ok(!links(ru, 'цветок', 'цвет'));
   });
 });
 
 describe('ru — irregular plurals', () => {
-  it('links the ten -мя neuters to their grown stem', () => {
+  it('links the -мя neuters to their -ен stem', () => {
     paradigm(ru, ['имя', 'имени', 'именем', 'имена', 'имён']);
     paradigm(ru, ['время', 'времени', 'времена', 'времён']);
     paradigm(ru, ['знамя', 'знамени', 'знамёна']);
@@ -64,7 +64,7 @@ describe('ru — irregular plurals', () => {
 });
 
 describe('ru — young animals', () => {
-  it('swaps the whole -ёнок suffix for the -ята plural', () => {
+  it('links a young animal to its -ята plural', () => {
     for (const [a, b] of [
       ['ребёнок', 'ребята'], ['котёнок', 'котята'], ['телёнок', 'телята'],
       ['гусёнок', 'гусята'], ['цыплёнок', 'цыплята'], ['поросёнок', 'поросята'],
@@ -73,7 +73,7 @@ describe('ru — young animals', () => {
     ]) assert.ok(links(ru, a, b), `${a} ~ ${b}`);
   });
 
-  it('leaves звонок out of it, keeping only its fleeting vowel', () => {
+  it('keeps звонок off звать, but not off звонка', () => {
     assert.ok(!links(ru, 'звонок', 'звать'));
     assert.ok(links(ru, 'звонок', 'звонка'));
   });
@@ -93,7 +93,7 @@ describe('uk — irregular plurals', () => {
     paradigm(uk, ["плем'я", 'племена']);
   });
 
-  it('still links what the vowel alternation already covered', () => {
+  it('still links what the vowel alternation covered before', () => {
     paradigm(uk, ['кіт', 'кота']);
     paradigm(uk, ['вухо', 'вуха']);
   });

@@ -37,6 +37,26 @@ lighter strip helps the forms still meet (see `ru.js` and `de.js`). For alternat
 vowels, `uk.js` adds the alternate stems as extra keys (`кіт`/`кота`). Keys must be
 deterministic and derived from the lowercased word.
 
+### Reaching what a stemmer cannot
+
+Suppletion and stem changes (`человек`/`люди`, `mouse`/`mice`, `песок`/`песка`) are
+past any suffix trimming, so a module reaches them by **adding** a key, never by
+replacing one. That is what makes a misfire cheap: a word the rule reads wrongly
+keeps its own key and gains one that matches nothing.
+
+It decides which tool to use, too:
+
+- a **closed** class is a table — the ten Russian `-мя` neuters, the English `-f/-ves`
+  nouns, the French `-ail/-aux` group;
+- an **open** one is a rule — the Russian fleeting vowel and `-ёнок`/`-ята`, English
+  `-man` compounds and Greek `-sis`.
+
+A rule needs an exclusion set for exactly one case: when a misfire coins a **real**
+word rather than a non-word, since only then can it collide with a real term
+(`omen`→`oman`, `звонок`→`звать`). Non-words need no guard. The same test decides
+what stays out of a table: a form with two singulars (`axes`, `leaves`, `bases`) is
+wrong however it is used, so it is not listed at all.
+
 ## Adding a language
 
 1. Copy [`_template.js`](_template.js) to `<id>.js` (e.g. `uk.js`). Files starting

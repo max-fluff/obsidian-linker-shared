@@ -109,7 +109,7 @@ for (const [sing, ...plurals] of [...CLASSICAL, ...GERMANIC, ...FVES]) {
   for (const p of plurals) IRREGULAR.set(p, sing);
 }
 
-// Words the rules below would take apart into a real but unrelated word.
+// Would come apart onto oman, raman, carman, dolman, novum, basis, phasis.
 const KEEP_WHOLE = new Set(['omen', 'amen', 'ramen', 'carmen', 'dolmen', 'nova', 'bases', 'phases']);
 
 // A compound pluralises its last word, so the tables read as suffix rules too.
@@ -120,7 +120,7 @@ const COMPOUND = new RegExp(
     .join('|') + ')$',
 );
 
-// An open class in scientific prose (prognosis, fibrosis, metastasis), so a rule not a table.
+// prognoses/prognosis, fibroses/fibrosis, metastases/metastasis.
 const GREEK_PLURAL = /.ses$/;
 
 // The coined singular is reduced like any other word, or dormouse and dormice key apart.

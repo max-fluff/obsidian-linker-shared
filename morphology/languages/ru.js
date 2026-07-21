@@ -82,8 +82,8 @@ function stemKeys(word) {
   return [es];
 }
 
-// Suppletive and stem-growing nouns: the singular gains the stem its other forms already
-// reduce to. Closed classes, so a table; the ten -мя neuters are generated rather than typed.
+// The singular gains the stem its other forms already reduce to. See languages/README.md
+// for when a class is a table and when it is a rule.
 const IRREGULAR_STEMS = new Map([
   ['человек', 'люд'], ['ребенок', 'дет'],
   ['мать', 'матер'], ['дочь', 'дочер'],
@@ -96,11 +96,10 @@ for (const w of ['имя', 'время', 'семя', 'знамя', 'племя',
   IRREGULAR_STEMS.set(w, w.slice(0, -1) + 'ен');
 }
 
-// Words with no fleeting vowel whose reduced form would be another word's stem.
+// Have no fleeting vowel, and would reduce onto урка and порка.
 const KEEP_WHOLE = new Set(['урок', 'порок']);
 
-// A fleeting vowel is productive (песок/песка, отец/отца), so it takes a rule. Every
-// candidate is added, never substituted: исток keeps its key and gains one matching nothing.
+// песок/песка, отец/отца, and the forms that swap the vowel for ь or й (палец/пальца).
 function fleetingStems(word) {
   const out = [];
   let m = /^(.+)о([кцнлбмртвшжгх])$/.exec(word);
@@ -115,11 +114,10 @@ function fleetingStems(word) {
   return out;
 }
 
-// Not young animals, and the rule would hand them another word's stem: звонок would reach звать.
+// Not a young animal, and would reduce onto звать.
 const NOT_YOUNG = new Set(['звонок']);
 
-// A young animal swaps the whole -ёнок suffix for -ята, and the pattern stays productive,
-// so it takes a rule. Read after the ё is folded away, hence -енок rather than -ёнок.
+// котёнок/котята. Read after the ё is folded away, hence -енок rather than -ёнок.
 function youngStems(word) {
   if (NOT_YOUNG.has(word)) return [];
   let m = /^(.+)енок$/.exec(word);
