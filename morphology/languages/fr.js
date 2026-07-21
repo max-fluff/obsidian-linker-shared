@@ -125,6 +125,14 @@ function lemma(word) {
   return strip(word);
 }
 
+// -ail/-aux is a closed group and yeux/cieux/aieux are suppletive, so the singular gains
+// the stem its plural already reduces to. fold() leaves the oe ligature alone, so it is listed.
+const IRREGULAR = new Map([
+  ['travail', 'travau'], ['vitrail', 'vitrau'], ['corail', 'corau'], ['bail', 'bau'],
+  ['email', 'emau'], ['soupirail', 'soupirau'], ['vantail', 'vantau'],
+  ['oeil', 'yeu'], ['œil', 'yeu'], ['ciel', 'cieu'], ['aieul', 'aieu'],
+]);
+
 module.exports = {
   id: 'fr',
   name: 'French',
@@ -133,8 +141,9 @@ module.exports = {
   keys(word, mode) {
     const w = word.toLowerCase();
     if (mode === 'exact') return [w];
-    if (mode === 'endingStrip') return [strip(w)];
-    return stemKeys(w);
+    const base = mode === 'endingStrip' ? [strip(w)] : stemKeys(w);
+    const extra = IRREGULAR.get(fold(w));
+    return extra && !base.includes(extra) ? [...base, extra] : base;
   },
   lemma,
 };

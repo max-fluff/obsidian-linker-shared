@@ -28,6 +28,14 @@ function alternations(stem) {
   return m ? [m[1] + 'о' + m[2], m[1] + 'е' + m[2]] : [];
 }
 
+// Suppletive and stem-growing nouns; the singular gains the stem its other forms reduce to.
+// Looked up without the apostrophe, which is written three different ways in the wild.
+const bareApostrophe = (w) => w.replace(/[’ʼ']/g, '');
+const IRREGULAR = new Map([
+  ['людина', 'люд'], ['дитина', 'діт'], ['мати', 'матер'], ['око', 'очі'],
+  ['імя', 'імен'], ['племя', 'племен'], ['вимя', 'вимен'],
+]);
+
 module.exports = {
   id: 'uk',
   name: 'Ukrainian',
@@ -36,9 +44,9 @@ module.exports = {
   keys(word, mode) {
     const w = word.toLowerCase();
     if (mode === 'exact') return [w];
-    if (mode === 'endingStrip') return [strip(w)];
-    const stem = strip(w);
-    return [...new Set([stem, ...alternations(stem)])];
+    const base = mode === 'endingStrip' ? [strip(w)] : [...new Set([strip(w), ...alternations(strip(w))])];
+    const extra = IRREGULAR.get(bareApostrophe(w));
+    return extra && !base.includes(extra) ? [...base, extra] : base;
   },
   lemma: (word) => strip(word),
 };

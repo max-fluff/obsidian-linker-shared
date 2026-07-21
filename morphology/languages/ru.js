@@ -82,6 +82,49 @@ function stemKeys(word) {
   return [es];
 }
 
+// Suppletive and stem-growing nouns: the singular gains the stem its other forms already
+// reduce to. Closed classes, so a table; the ten -мя neuters are generated rather than typed.
+const IRREGULAR_STEMS = new Map([
+  ['человек', 'люд'], ['ребенок', 'дет'],
+  ['мать', 'матер'], ['дочь', 'дочер'],
+  ['небо', 'небес'], ['чудо', 'чудес'], ['тело', 'телес'],
+  ['друг', 'друз'], ['сын', 'сынов'], ['ухо', 'уш'], ['око', 'оч'],
+  ['хозяин', 'хозяев'],
+]);
+for (const w of ['имя', 'время', 'семя', 'знамя', 'племя', 'стремя', 'темя', 'бремя', 'вымя', 'пламя']) {
+  IRREGULAR_STEMS.set(w, w.slice(0, -1) + 'ен');
+}
+
+// Words with no fleeting vowel whose reduced form would be another word's stem.
+const KEEP_WHOLE = new Set(['урок', 'порок']);
+
+// A fleeting vowel is productive (песок/песка, отец/отца), so it takes a rule. Every
+// candidate is added, never substituted: исток keeps its key and gains one matching nothing.
+function fleetingStems(word) {
+  if (KEEP_WHOLE.has(word)) return [];
+  const out = [];
+  let m = /^(.+)о([кцнлбмртвшжгх])$/.exec(word);
+  if (m) out.push(m[1] + m[2]);
+  m = /^(.+)е([цкнлмртвшжб])$/.exec(word);
+  if (m) {
+    out.push(m[1] + m[2]);
+    out.push(m[1] + (/[аеиоуыэюя]$/.test(m[1]) ? 'й' : 'ь') + m[2]);
+  }
+  m = /^(.+)ень$/.exec(word);
+  if (m) out.push(m[1] + 'н');
+  return out;
+}
+
+// Over-short keys are dropped for the reason stemKeys drops an over-short stem.
+function derivedStems(word) {
+  const w = word.replace(/ё/g, 'е');
+  const out = [];
+  const irregular = IRREGULAR_STEMS.get(w);
+  if (irregular) out.push(irregular);
+  for (const c of fleetingStems(w)) if (c.length >= 3) out.push(c);
+  return out;
+}
+
 function softStemNoun(word) {
   const w = word.toLowerCase().replace(/ё/g, 'е');
   if (w.length > 3 && w.endsWith('ем')) {
@@ -107,6 +150,7 @@ module.exports = {
     const ks = keyer(w);
     const soft = softStemNoun(w);
     if (soft) for (const sk of keyer(soft)) if (!ks.includes(sk)) ks.push(sk);
+    for (const extra of derivedStems(w)) if (!ks.includes(extra)) ks.push(extra);
     return ks;
   },
   lemma,
