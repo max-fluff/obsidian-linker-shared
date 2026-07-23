@@ -9,6 +9,10 @@
 // use); ported to JS and adapted to this plugin's language-module interface.
 //   https://www.apache.org/licenses/LICENSE-2.0
 //   https://github.com/apache/lucene/blob/main/lucene/analysis/common/src/java/org/apache/lucene/analysis/de/GermanLightStemmer.java
+//
+// cistem() implements CISTEM (Leonie Weissweiler & Alexander Fraser, GSCL 2017), MIT
+// licensed, which reaches the verb forms the light stemmer leaves alone:
+//   https://github.com/LeonieWeissweiler/CISTEM
 // strip()/lemma() are this plugin's own light helpers.
 
 function fold(word) {
@@ -57,14 +61,46 @@ function strip(word) {
   return s;
 }
 
+// The folded word keys alongside its cut: a short base loses a letter the plural keeps
+// (haus → hau against häuser → haus), and then the two never meet.
+function stripKeys(word) {
+  const s = fold(word);
+  const cut = strip(word);
+  return cut === s ? [s] : [s, cut];
+}
+
 function stemKeys(word) {
   const a = stem(word);
   const b = strip(word);
   return a === b ? [a] : [a, b];
 }
 
+const cistemPark = (w) => w.replace(/sch/g, '$').replace(/ei/g, '%').replace(/ie/g, '&').replace(/(.)\1/g, '$1*');
+const cistemUnpark = (w) => w.replace(/(.)\*/g, '$1$1').replace(/%/g, 'ei').replace(/&/g, 'ie').replace(/\$/g, 'sch');
+
+// CISTEM without its ge- step, which coins real and unrelated words: Gewicht → Wicht.
+function cistem(word) {
+  const chars = [...cistemPark(fold(word))];
+  while (chars.length > 3) {
+    const j = chars.length - 1;
+    if (chars.length > 5) {
+      if ((chars[j] === 'm' || chars[j] === 'r') && chars[j - 1] === 'e') { chars.length -= 2; continue; }
+      if (chars[j] === 'd' && chars[j - 1] === 'n') { chars.length -= 2; continue; }
+    }
+    if (chars[j] === 't' || chars[j] === 'e' || chars[j] === 's' || chars[j] === 'n') { chars.length -= 1; continue; }
+    break;
+  }
+  return cistemUnpark(chars.join(''));
+}
+
+// -innen: the light stemmer stops one n short of the singular (freundinnen → freundinn).
+const feminine = (word) => {
+  const s = fold(word);
+  return s.length > 6 && s.endsWith('innen') ? s.slice(0, -3) : null;
+};
+
 function lemma(word) {
-  return strip(word);
+  return feminine(word) || strip(word);
 }
 
 module.exports = {
@@ -75,8 +111,16 @@ module.exports = {
   keys(word, mode) {
     const w = word.toLowerCase();
     if (mode === 'exact') return [w];
-    if (mode === 'endingStrip') return [strip(w)];
-    return stemKeys(w);
+    const reduce = mode === 'endingStrip' ? stripKeys : stemKeys;
+    const singular = feminine(w);
+    const ks = reduce(w);
+    if (singular) for (const k of reduce(singular)) if (!ks.includes(k)) ks.push(k);
+    // Kept out of the light mode: CISTEM cuts deeper than an ending strip should.
+    if (mode === 'stemmer') {
+      const c = cistem(w);
+      if (!ks.includes(c)) ks.push(c);
+    }
+    return ks;
   },
   lemma,
 };
