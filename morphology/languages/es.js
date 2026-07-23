@@ -39,10 +39,19 @@ function strip(word) {
   return s;
 }
 
+// ciudad/ciudades or grande/grandes — the spelling cannot tell, so both readings key.
+// The word itself keys too, or a stem ending in -s loses a letter its plural keeps (pais).
+function stripKeys(word) {
+  const s = fold(word);
+  const out = [s];
+  if (s.length > 4 && s.endsWith('ces')) out.push(s.slice(0, -3) + 'z');
+  if (s.length > 3 && s.endsWith('es')) out.push(s.slice(0, -2));
+  if (s.length > 3 && s.endsWith('s')) out.push(s.slice(0, -1));
+  return [...new Set(out)];
+}
+
 function stemKeys(word) {
-  const a = stem(word);
-  const b = strip(word);
-  return a === b ? [a] : [a, b];
+  return [...new Set([stem(word), ...stripKeys(word)])];
 }
 
 function lemma(word) {
@@ -57,7 +66,7 @@ module.exports = {
   keys(word, mode) {
     const w = word.toLowerCase();
     if (mode === 'exact') return [w];
-    if (mode === 'endingStrip') return [strip(w)];
+    if (mode === 'endingStrip') return stripKeys(w);
     return stemKeys(w);
   },
   lemma,

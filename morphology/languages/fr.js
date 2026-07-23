@@ -115,6 +115,14 @@ function strip(word) {
   return s;
 }
 
+// -al/-aux is regular, and the strip alone stops at chevau.
+function stripKeys(word) {
+  const s = fold(word);
+  const out = [s, strip(word)];
+  if (s.length > 4 && s.endsWith('aux')) out.push(s.slice(0, -3) + 'al');
+  return [...new Set(out)];
+}
+
 function stemKeys(word) {
   const a = stem(word);
   const b = strip(word);
@@ -141,7 +149,7 @@ module.exports = {
   keys(word, mode) {
     const w = word.toLowerCase();
     if (mode === 'exact') return [w];
-    const base = mode === 'endingStrip' ? [strip(w)] : stemKeys(w);
+    const base = mode === 'endingStrip' ? stripKeys(w) : stemKeys(w);
     const extra = IRREGULAR.get(fold(w));
     return extra && !base.includes(extra) ? [...base, extra] : base;
   },
