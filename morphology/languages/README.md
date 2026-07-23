@@ -18,7 +18,7 @@ load and shown under *Settings → Matching → Languages* with the reason.
 |---|---|---|---|
 | `id` | `string` | yes | Lowercase code, usually ISO 639 (`/^[a-z][a-z0-9-]*$/`). Reusing a built-in id overrides it. |
 | `name` | `string` | yes | Display name shown in settings. |
-| `priority` | `number` | no (0) | Default priority; higher wins when two languages claim a word. Users can reorder languages in settings to change this. |
+| `priority` | `number` | no (0) | Where the language sits in the settings list; users reorder it there. Languages do not compete for a word, so the order only decides which module answers `lemma()` and how a tie between equal candidates breaks. |
 | `match(word)` | `function → boolean` | yes | Claims a word, usually by script. |
 | `keys(word, mode)` | `function → string[]` | yes | Comparison keys for one word. Non-empty array of strings. |
 | `lemma(word)` | `function → string` | no | Base form for collected aliases. Defaults to the lowercased word. |
@@ -26,7 +26,9 @@ load and shown under *Settings → Matching → Languages* with the reason.
 ### How matching works
 
 Two words link when their key sets overlap, so `keys()` must map every form of a
-word to a key its base form also produces. The mode is a global user setting:
+word to a key its base form also produces. A word goes to **every** enabled language
+that claims it and keys to the union of their answers; a second language of the same
+script adds keys, it never overrules the first. The mode is a global user setting:
 
 - `exact` — no morphology; return `[word.toLowerCase()]`.
 - `endingStrip` — light: trim common endings.

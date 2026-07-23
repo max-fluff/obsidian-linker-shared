@@ -4,6 +4,7 @@ const { describe, it, assert } = require('../harness');
 const ru = require('../../morphology/languages/ru');
 const uk = require('../../morphology/languages/uk');
 const fr = require('../../morphology/languages/fr');
+const de = require('../../morphology/languages/de');
 
 const links = (lang, a, b) => {
   const ka = lang.keys(a, 'stemmer');
@@ -29,6 +30,13 @@ describe('ru — fleeting vowels', () => {
   it('links the forms that swap the vowel for ь or й', () => {
     paradigm(ru, ['палец', 'пальца', 'пальцы']);
     paradigm(ru, ['боец', 'бойца', 'бойцы']);
+  });
+
+  it('links день, сон and рот to their own case forms', () => {
+    paradigm(ru, ['день', 'дня', 'дню', 'днём', 'дни', 'дней']);
+    paradigm(ru, ['сон', 'сна', 'сну', 'сны', 'снов']);
+    paradigm(ru, ['рот', 'рта', 'рту']);
+    paradigm(ru, ['лоб', 'лба', 'лбу']);
   });
 
   it('leaves a word whole when its reduced form is another word', () => {
@@ -61,6 +69,13 @@ describe('ru — irregular plurals', () => {
     paradigm(ru, ['ухо', 'уха', 'уши']);
     paradigm(ru, ['хозяин', 'хозяина', 'хозяева']);
   });
+
+  it('reaches an irregular stem from a case form, not only from the nominative', () => {
+    for (const [a, b] of [
+      ['человека', 'люди'], ['человеком', 'людям'], ['ребёнка', 'дети'],
+      ['друга', 'друзья'], ['котёнка', 'котята'], ['хозяина', 'хозяева'],
+    ]) assert.ok(links(ru, a, b), `${a} ~ ${b}`);
+  });
 });
 
 describe('ru — young animals', () => {
@@ -76,6 +91,24 @@ describe('ru — young animals', () => {
   it('keeps звонок off звать, but not off звонка', () => {
     assert.ok(!links(ru, 'звонок', 'звать'));
     assert.ok(links(ru, 'звонок', 'звонка'));
+  });
+});
+
+describe('ru — case forms', () => {
+  it('links the instrumental and prepositional forms', () => {
+    paradigm(ru, ['новый', 'новым', 'новых', 'новыми', 'нового']);
+    paradigm(ru, ['хороший', 'хорошим', 'хороших', 'хорошего']);
+    paradigm(ru, ['большой', 'большим', 'больших', 'большого']);
+  });
+
+  it('links a base whose stem itself ends in an ending', () => {
+    paradigm(ru, ['система', 'систем', 'систему', 'системой', 'системам']);
+    paradigm(ru, ['схема', 'схем', 'схему']);
+  });
+
+  it('keeps a word off another word that happens to spell its stem', () => {
+    assert.ok(!links(ru, 'работа', 'работать'));
+    assert.ok(!links(ru, 'режим', 'режет'));
   });
 });
 
@@ -96,6 +129,40 @@ describe('uk — irregular plurals', () => {
   it('still links what the vowel alternation covered before', () => {
     paradigm(uk, ['кіт', 'кота']);
     paradigm(uk, ['вухо', 'вуха']);
+  });
+});
+
+describe('uk — fleeting vowels', () => {
+  it('links a noun across the vowel its base form carries', () => {
+    paradigm(uk, ['нотатка', 'нотаток']);
+    paradigm(uk, ['вікно', 'вікон']);
+    paradigm(uk, ['сестра', 'сестер']);
+  });
+
+  it('links the short nouns to their own case forms', () => {
+    paradigm(uk, ['день', 'дня', 'дні', 'днів']);
+    paradigm(uk, ['сон', 'сну', 'сни']);
+  });
+});
+
+describe('de — feminine plurals', () => {
+  it('links -in to its -innen plural', () => {
+    paradigm(de, ['freundin', 'freundinnen']);
+    paradigm(de, ['lehrerin', 'lehrerinnen']);
+  });
+});
+
+describe('de — verb forms', () => {
+  it('links the finite forms the light stemmer leaves alone', () => {
+    paradigm(de, ['machen', 'macht', 'machte']);
+    paradigm(de, ['sagen', 'sagt', 'sagte']);
+    paradigm(de, ['suchen', 'sucht', 'suchte']);
+  });
+
+  it('holds the ge- prefix back, since dropping it coins real words', () => {
+    assert.ok(!links(de, 'Gewicht', 'Wicht'));
+    assert.ok(!links(de, 'Gedanke', 'danke'));
+    assert.ok(!links(de, 'Gebiet', 'bieten'));
   });
 });
 

@@ -43,6 +43,23 @@ describe('en — classical plurals', () => {
   });
 });
 
+describe('en — families the stemmer must keep apart', () => {
+  it('holds the hand-marked words off their look-alikes', () => {
+    for (const [a, b] of [
+      ['generous', 'general'], ['generous', 'generate'], ['university', 'universe'],
+      ['organ', 'organize'], ['past', 'paste'], ['later', 'lateral'],
+      ['emerge', 'emergency'], ['intern', 'internal'], ['commune', 'communism'],
+      ['news', 'new'],
+    ]) assert.ok(!links(en, a, b), `${a} ~ ${b}`);
+  });
+
+  it('keeps a doubled consonant that opens the word', () => {
+    assert.ok(links(en, 'added', 'add'));
+    assert.ok(links(en, 'ebbed', 'ebb'));
+    assert.ok(links(en, 'hopping', 'hop'));
+  });
+});
+
 describe('en — irregular and compound plurals', () => {
   it('links irregular native plurals to their singular', () => {
     for (const [a, b] of [
@@ -155,6 +172,24 @@ describe('el — Greek morphology', () => {
     assert.ok(links(el, 'σῶμα', 'σώματος'));
     assert.ok(links(el, 'σῶμα', 'σώματα'));
     assert.ok(links(el, 'ὄνομα', 'ὀνόματος'));
+  });
+
+  it('links the modern plural of the commonest noun classes', () => {
+    for (const [a, b] of [
+      ['χώρα', 'χώρες'], ['γλώσσα', 'γλώσσες'], ['ώρα', 'ώρες'],
+      ['βιβλίο', 'βιβλία'], ['πατέρας', 'πατέρες'],
+    ]) assert.ok(links(el, a, b), `${a} ~ ${b}`);
+  });
+
+  it('links the -ί neuters through the ι their oblique forms grow', () => {
+    for (const [a, b] of [
+      ['παιδί', 'παιδιά'], ['παιδί', 'παιδιού'], ['κερί', 'κεριά'],
+    ]) assert.ok(links(el, a, b), `${a} ~ ${b}`);
+  });
+
+  it('keeps the -ι rule off the -οι and -αι endings', () => {
+    assert.ok(!el.keys('λόγοι', 'stemmer').includes('λογοι'));
+    assert.ok(!el.keys('άνθρωποι', 'stemmer').includes('ανθρωποι'));
   });
 
   it('keeps unrelated words apart', () => {
