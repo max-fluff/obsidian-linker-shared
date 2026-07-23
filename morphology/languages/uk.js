@@ -7,16 +7,18 @@
 
 const ENDINGS = [
   'ами', 'ями', 'ові', 'еві', 'ого', 'ому', 'ему', 'ими', 'их',
-  'ах', 'ях', 'ів', 'ою', 'ею', 'ом', 'ем', 'ей', 'ий', 'ій',
+  'ах', 'ях', 'ів', 'ою', 'ею', 'ом', 'ем', 'ям', 'ей', 'ий', 'ій',
   'а', 'я', 'у', 'ю', 'е', 'о', 'и', 'і', 'ї', 'ь',
 ].sort((a, b) => b.length - a.length);
 
 const CLOSED_SYLLABLE = /^(.*)і([^аеєиіїоуюя]+)$/;
 
+// Two letters, not three, for the reason ru.js gives: at three дня and сна are left uncut
+// and never meet their own base form.
 function strip(word) {
   const w = word.toLowerCase();
   for (const e of ENDINGS) {
-    if (w.length - e.length >= 3 && w.endsWith(e)) return w.slice(0, -e.length);
+    if (w.length - e.length >= 2 && w.endsWith(e)) return w.slice(0, -e.length);
   }
   return w;
 }
@@ -28,11 +30,23 @@ function alternations(stem) {
   return m ? [m[1] + 'о' + m[2], m[1] + 'е' + m[2]] : [];
 }
 
+// нотатка/нотаток, вікно/вікон: the vowel the base form carries drops out of the paradigm.
+function fleetingStems(word) {
+  const out = [];
+  let m = /^(.+)о([кцнлбмртвшжгх])$/.exec(word);
+  if (m) out.push(m[1] + m[2]);
+  m = /^(.+)е([цкнлмртвшжб])$/.exec(word);
+  if (m) out.push(m[1] + m[2]);
+  m = /^(.+)ень$/.exec(word);
+  if (m) out.push(m[1] + 'н');
+  return out.filter((s) => s.length >= 2);
+}
+
 // Suppletive and stem-growing nouns; the singular gains the stem its other forms reduce to.
 // Looked up without the apostrophe, which is written three different ways in the wild.
 const bareApostrophe = (w) => w.replace(/[’ʼ']/g, '');
 const IRREGULAR = new Map([
-  ['людина', 'люд'], ['дитина', 'діт'], ['мати', 'матер'], ['око', 'очі'],
+  ['людина', 'люд'], ['дитина', 'діт'], ['мати', 'матер'], ['око', 'оч'],
   ['імя', 'імен'], ['племя', 'племен'], ['вимя', 'вимен'],
 ]);
 
@@ -45,9 +59,10 @@ module.exports = {
     const w = word.toLowerCase();
     if (mode === 'exact') return [w];
     const stem = strip(w);
-    const base = mode === 'endingStrip' ? [stem] : [...new Set([stem, ...alternations(stem)])];
+    const ks = [...new Set([stem, ...alternations(stem), ...fleetingStems(w)])];
     const extra = IRREGULAR.get(bareApostrophe(w));
-    return extra && !base.includes(extra) ? [...base, extra] : base;
+    if (extra && !ks.includes(extra)) ks.push(extra);
+    return ks;
   },
   lemma: (word) => strip(word),
 };

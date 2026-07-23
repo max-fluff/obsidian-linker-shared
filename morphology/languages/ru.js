@@ -26,7 +26,7 @@ const NN = /нн$/;
 const ENDINGS = [
   'иями', 'ями', 'ами', 'ах', 'ях', 'ов', 'ев', 'ою', 'ею', 'ом', 'ем',
   'ам', 'ям', 'ого', 'его', 'ому', 'ему', 'ыми', 'ими', 'ой', 'ей', 'ий',
-  'ый', 'ую', 'юю', 'а', 'я', 'у', 'ю', 'о', 'е', 'и', 'ы', 'ь',
+  'ый', 'ым', 'ых', 'их', 'им', 'ую', 'юю', 'а', 'я', 'у', 'ю', 'о', 'е', 'и', 'ы', 'ь',
 ].sort((a, b) => b.length - a.length);
 
 const VOWELS = 'аеёиоуыэюя';
@@ -65,10 +65,12 @@ function stem(word) {
   return pre + rv;
 }
 
+// Two letters, not three: at three the short fleeting-vowel nouns never meet their own
+// case forms, because дня, сна and рта are left uncut. The price is день ~ дно.
 function strip(word) {
   word = word.toLowerCase().replace(/ё/g, 'е');
   for (const e of ENDINGS) {
-    if (word.length - e.length >= 3 && word.endsWith(e)) return word.slice(0, -e.length);
+    if (word.length - e.length >= 2 && word.endsWith(e)) return word.slice(0, -e.length);
   }
   return word;
 }
@@ -114,27 +116,36 @@ function fleetingStems(word) {
   return out;
 }
 
-// Not a young animal, and would reduce onto звать.
-const NOT_YOUNG = new Set(['звонок']);
+// Not young animals, and would reduce onto звать. The stem is listed too, as the oblique
+// forms are read through it.
+const NOT_YOUNG = new Set(['звонок', 'звонк']);
 
-// котёнок/котята. Read after the ё is folded away, hence -енок rather than -ёнок.
+// котёнок/котята, котёнка through its stem. Read after the ё is folded, hence -енок.
 function youngStems(word) {
   if (NOT_YOUNG.has(word)) return [];
-  let m = /^(.+)енок$/.exec(word);
+  let m = /^(.+)ен(?:ок|к)$/.exec(word);
   if (m) return [m[1] + 'ят'];
-  m = /^(.+)онок$/.exec(word);
+  m = /^(.+)он(?:ок|к)$/.exec(word);
   if (m) return [m[1] + 'ат'];
   return [];
+}
+
+// The tables are written in the nominative, but every case form has to reach the same
+// stem, so they are read by stem as well: человека, not only человек, meets люди.
+const IRREGULAR_BY_STEM = new Map();
+for (const [form, target] of IRREGULAR_STEMS) {
+  for (const k of [strip(form), ...fleetingStems(form)]) if (!IRREGULAR_BY_STEM.has(k)) IRREGULAR_BY_STEM.set(k, target);
 }
 
 // Over-short keys are dropped for the reason stemKeys drops an over-short stem.
 function derivedStems(word) {
   const w = word.replace(/ё/g, 'е');
   const out = [];
-  const irregular = IRREGULAR_STEMS.get(w);
+  const es = strip(w);
+  const irregular = IRREGULAR_STEMS.get(w) || IRREGULAR_BY_STEM.get(es);
   if (irregular) out.push(irregular);
   if (KEEP_WHOLE.has(w)) return out;
-  for (const c of [...fleetingStems(w), ...youngStems(w)]) if (c.length >= 3) out.push(c);
+  for (const c of [...fleetingStems(w), ...youngStems(w), ...youngStems(es)]) if (c.length >= 2) out.push(c);
   return out;
 }
 
@@ -161,6 +172,16 @@ module.exports = {
     if (mode === 'exact') return [w];
     const keyer = (x) => (mode === 'endingStrip' ? [strip(x)] : stemKeys(x));
     const ks = keyer(w);
+    // A stem ending in an ending is cut twice (систем → сист), so a word already on a
+    // consonant keys as written. Only there: elsewhere it is another word's stem (работать).
+    const folded = w.replace(/ё/g, 'е');
+    if (/[^аеиоуыэюяйь]$/.test(folded) && !ks.includes(folded)) ks.push(folded);
+    // -ому/-ему is an adjective dative, but also the accusative of a noun in -ома/-ема,
+    // where only the last letter is the ending (систему → систем, not сист).
+    if (/[ео]му$/.test(folded)) {
+      const noun = folded.slice(0, -1);
+      if (!ks.includes(noun)) ks.push(noun);
+    }
     const soft = softStemNoun(w);
     if (soft) for (const sk of keyer(soft)) if (!ks.includes(sk)) ks.push(sk);
     for (const extra of derivedStems(w)) if (!ks.includes(extra)) ks.push(extra);
