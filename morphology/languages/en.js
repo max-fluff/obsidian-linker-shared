@@ -2,69 +2,152 @@
 
 // English morphology for the linker plugins.
 //
-// stem() implements the Porter stemming algorithm (M. F. Porter, 1980), released
-// by the author for free use (commercial and non-commercial):
-//   https://tartarus.org/martin/PorterStemmer/
-//   https://snowballstem.org/algorithms/porter/stemmer.html
+// stem() implements the English (Porter2) stemming algorithm, ported from Snowball's
+// algorithms/english.sbl. Snowball is (c) 2001-2006 Dr Martin Porter and Richard
+// Boulton, BSD license (free for commercial and non-commercial use):
+//   https://snowballstem.org/license.html
+//   https://snowballstem.org/algorithms/english/stemmer.html
 // strip()/lemma() are this plugin's own light helpers.
 
-const STEP2 = { ational: 'ate', tional: 'tion', enci: 'ence', anci: 'ance', izer: 'ize', bli: 'ble', alli: 'al', entli: 'ent', eli: 'e', ousli: 'ous', ization: 'ize', ation: 'ate', ator: 'ate', alism: 'al', iveness: 'ive', fulness: 'ful', ousness: 'ous', aliti: 'al', iviti: 'ive', biliti: 'ble', logi: 'log' };
-const STEP3 = { icate: 'ic', ative: '', alize: 'al', iciti: 'ic', ical: 'ic', ful: '', ness: '' };
-const C = '[^aeiou]', V = '[aeiouy]', CC = C + '[^aeiouy]*', VV = V + '[aeiou]*';
-const MGR0 = new RegExp('^(' + CC + ')?' + VV + CC);
-const MEQ1 = new RegExp('^(' + CC + ')?' + VV + CC + '(' + VV + ')?$');
-const MGR1 = new RegExp('^(' + CC + ')?' + VV + CC + VV + CC);
-const S_V = new RegExp('^(' + CC + ')?' + V);
+const VOWELS = 'aeiouy';
+const isV = (c) => VOWELS.includes(c);
+const notV = (c) => !isV(c);
+const DOUBLES = ['bb', 'dd', 'ff', 'gg', 'mm', 'nn', 'pp', 'rr', 'tt'];
+const VALID_LI = 'cdeghkmnrt';
+
+// R1 fixed by hand, so general/generous and universe/university stay apart.
+const PREFIXES = ['gener', 'commun', 'arsen', 'past', 'univers', 'later', 'emerg', 'organ', 'inter'];
+
+const EXCEPTION1 = {
+  skis: 'ski', skies: 'sky', idly: 'idl', gently: 'gentl', ugly: 'ugli',
+  early: 'earli', only: 'onli', singly: 'singl',
+  sky: 'sky', news: 'news', howe: 'howe', atlas: 'atlas', cosmos: 'cosmos',
+  bias: 'bias', andes: 'andes',
+};
+const ING_KEEP = ['inn', 'out', 'cann', 'herr', 'earr', 'even'];
+
+const gopast = (w, from, test) => {
+  let i = from;
+  while (i < w.length && !test(w[i])) i++;
+  return i < w.length ? i + 1 : w.length;
+};
+
+function markRegions(w) {
+  const prefix = PREFIXES.find((p) => w.startsWith(p));
+  const p1 = prefix ? prefix.length : gopast(w, gopast(w, 0, isV), notV);
+  return [p1, gopast(w, gopast(w, p1, isV), notV)];
+}
+
+function shortv(w) {
+  const n = w.length;
+  if (n >= 3 && !isV(w[n - 1]) && w[n - 1] !== 'w' && w[n - 1] !== 'x' && w[n - 1] !== 'Y'
+    && isV(w[n - 2]) && !isV(w[n - 3])) return true;
+  if (n === 2 && isV(w[0]) && !isV(w[1])) return true;
+  return w.endsWith('past');
+}
+
+const longestOf = (w, list) => list.filter((s) => w.endsWith(s)).sort((a, b) => b.length - a.length)[0];
+
+const STEP2 = [['ational', 'ate'], ['tional', 'tion'], ['ization', 'ize'], ['ousness', 'ous'],
+  ['iveness', 'ive'], ['fulness', 'ful'], ['ogist', 'og'], ['lessli', 'less'], ['biliti', 'ble'],
+  ['alism', 'al'], ['aliti', 'al'], ['ation', 'ate'], ['entli', 'ent'], ['ousli', 'ous'],
+  ['iviti', 'ive'], ['fulli', 'ful'], ['enci', 'ence'], ['anci', 'ance'], ['abli', 'able'],
+  ['izer', 'ize'], ['ator', 'ate'], ['alli', 'al'], ['ogi', 'og'], ['bli', 'ble'], ['li', null]];
+const STEP3 = [['ational', 'ate'], ['tional', 'tion'], ['alize', 'al'], ['icate', 'ic'],
+  ['iciti', 'ic'], ['ical', 'ic'], ['ness', ''], ['ful', ''], ['ative', null]];
+const STEP4 = ['ement', 'ance', 'ence', 'able', 'ible', 'ment', 'ant', 'ent', 'ism',
+  'ate', 'iti', 'ous', 'ive', 'ize', 'ion', 'al', 'er', 'ic'];
 
 function stem(word) {
-  let w = word.toLowerCase();
-  if (w.length < 3) return w;
-  let st, suffix, fp, re, re2, re3, re4;
-  const firstch = w.substr(0, 1);
-  if (firstch === 'y') w = firstch.toUpperCase() + w.substr(1);
+  const lower = word.toLowerCase();
+  if (EXCEPTION1[lower] !== undefined) return EXCEPTION1[lower];
+  if (lower.length < 3) return lower;
 
-  re = /^(.+?)(ss|i)es$/; re2 = /^(.+?)([^s])s$/;
-  if (re.test(w)) w = w.replace(re, '$1$2'); else if (re2.test(w)) w = w.replace(re2, '$1$2');
+  let w = lower.startsWith("'") ? lower.slice(1) : lower;
+  let yFound = false;
+  let marked = '';
+  for (let i = 0; i < w.length; i++) {
+    if (w[i] === 'y' && (i === 0 || isV(w[i - 1]))) { marked += 'Y'; yFound = true; } else marked += w[i];
+  }
+  w = marked;
 
-  re = /^(.+?)eed$/; re2 = /^(.+?)(ed|ing)$/;
-  if (re.test(w)) { fp = re.exec(w); if (MGR0.test(fp[1])) w = w.replace(/.$/, ''); }
-  else if (re2.test(w)) {
-    fp = re2.exec(w); st = fp[1];
-    if (S_V.test(st)) {
-      w = st;
-      re2 = /(at|bl|iz)$/; re3 = /([^aeiouylsz])\1$/; re4 = new RegExp('^' + CC + V + '[^aeiouwxy]$');
-      if (re2.test(w)) w = w + 'e'; else if (re3.test(w)) w = w.replace(/.$/, ''); else if (re4.test(w)) w = w + 'e';
+  const [p1, p2] = markRegions(w);
+  const inR1 = (n) => p1 <= w.length - n;
+  const inR2 = (n) => p2 <= w.length - n;
+
+  const apo = longestOf(w, ["'s'", "'s", "'"]);
+  if (apo) w = w.slice(0, -apo.length);
+  const s1a = longestOf(w, ['sses', 'ied', 'ies', 'us', 'ss', 's']);
+  if (s1a === 'sses') w = w.slice(0, -2);
+  else if (s1a === 'ied' || s1a === 'ies') w = w.length > 4 ? w.slice(0, -2) : w.slice(0, -1);
+  else if (s1a === 's' && [...w.slice(0, -2)].some(isV)) w = w.slice(0, -1);
+
+  const s1b = longestOf(w, ['eedly', 'eed', 'ingly', 'edly', 'ing', 'ed']);
+  let general = false;
+  if (s1b === 'eedly' || s1b === 'eed') {
+    const rest = w.slice(0, -s1b.length);
+    if (inR1(s1b.length) && !['proc', 'exc', 'succ'].includes(rest)) w = rest + 'ee';
+  } else if (s1b === 'ing') {
+    const rest = w.slice(0, -3);
+    if (rest.length === 2 && rest.endsWith('y') && !isV(rest[0])) w = rest[0] + 'ie';
+    else if (!ING_KEEP.includes(rest)) general = true;
+  } else if (s1b) general = true;
+
+  if (general) {
+    const rest = w.slice(0, -s1b.length);
+    if ([...rest].some(isV)) {
+      w = rest;
+      if (w.endsWith('at') || w.endsWith('bl') || w.endsWith('iz')) w += 'e';
+      else if (DOUBLES.some((d) => w.endsWith(d))) {
+        // add and ebb keep their double: the vowel before it opens the word.
+        if (!(w.length === 3 && 'aeo'.includes(w[0]))) w = w.slice(0, -1);
+      } else if (w.length === p1 && shortv(w)) w += 'e';
     }
   }
 
-  re = /^(.+?)y$/;
-  if (re.test(w)) { fp = re.exec(w); st = fp[1]; if (S_V.test(st)) w = st + 'i'; }
+  if (w.length > 2 && (w.endsWith('y') || w.endsWith('Y')) && !isV(w[w.length - 2])) {
+    w = w.slice(0, -1) + 'i';
+  }
 
-  re = /^(.+?)(ational|tional|enci|anci|izer|bli|alli|entli|eli|ousli|ization|ation|ator|alism|iveness|fulness|ousness|aliti|iviti|biliti|logi)$/;
-  if (re.test(w)) { fp = re.exec(w); st = fp[1]; suffix = fp[2]; if (MGR0.test(st)) w = st + STEP2[suffix]; }
+  const s2 = STEP2.find(([suf]) => w.endsWith(suf));
+  if (s2 && inR1(s2[0].length)) {
+    if (s2[0] === 'ogi') { if (w[w.length - 4] === 'l') w = w.slice(0, -1); }
+    else if (s2[0] === 'li') { if (VALID_LI.includes(w[w.length - 3])) w = w.slice(0, -2); }
+    else w = w.slice(0, -s2[0].length) + s2[1];
+  }
 
-  re = /^(.+?)(icate|ative|alize|iciti|ical|ful|ness)$/;
-  if (re.test(w)) { fp = re.exec(w); st = fp[1]; suffix = fp[2]; if (MGR0.test(st)) w = st + STEP3[suffix]; }
+  const s3 = STEP3.find(([suf]) => w.endsWith(suf));
+  if (s3 && inR1(s3[0].length)) {
+    if (s3[0] === 'ative') { if (inR2(5)) w = w.slice(0, -5); }
+    else w = w.slice(0, -s3[0].length) + s3[1];
+  }
 
-  re = /^(.+?)(al|ance|ence|er|ic|able|ible|ant|ement|ment|ent|ou|ism|ate|iti|ous|ive|ize)$/; re2 = /^(.+?)(s|t)(ion)$/;
-  if (re.test(w)) { fp = re.exec(w); st = fp[1]; if (MGR1.test(st)) w = st; }
-  else if (re2.test(w)) { fp = re2.exec(w); st = fp[1] + fp[2]; if (MGR1.test(st)) w = st; }
+  const s4 = longestOf(w, STEP4);
+  if (s4 && inR2(s4.length)) {
+    if (s4 === 'ion') {
+      const p = w[w.length - 4];
+      if (p === 's' || p === 't') w = w.slice(0, -3);
+    } else w = w.slice(0, -s4.length);
+  }
 
-  re = /^(.+?)e$/;
-  if (re.test(w)) { fp = re.exec(w); st = fp[1]; re3 = new RegExp('^' + CC + V + '[^aeiouwxy]$'); if (MGR1.test(st) || (MEQ1.test(st) && !re3.test(st))) w = st; }
+  if (w.endsWith('e')) {
+    if (inR2(1) || (inR1(1) && !shortv(w.slice(0, -1)))) w = w.slice(0, -1);
+  } else if (w.endsWith('l') && inR2(1) && w[w.length - 2] === 'l') w = w.slice(0, -1);
 
-  if (/ll$/.test(w) && MGR1.test(w)) w = w.replace(/.$/, '');
-
-  if (firstch === 'y') w = firstch.toLowerCase() + w.substr(1);
-  return w;
+  return yFound ? w.replace(/Y/g, 'y') : w;
 }
+
+// Cutting -es everywhere eats a silent e (notes → not), and which a -ses is —
+// case/cases or bus/buses — the spelling cannot tell, so both readings key.
+const SIBILANT_ES = /(?:s|x|z|ch|sh|[^aeiou]o)es$/;
 
 function strip(word) {
   const w = word.toLowerCase();
-  if (w.length > 4 && w.endsWith('ies')) return w.slice(0, -3) + 'y';
-  if (w.length > 3 && w.endsWith('es')) return w.slice(0, -2);
-  if (w.length > 3 && w.endsWith('s') && !w.endsWith('ss')) return w.slice(0, -1);
-  return w;
+  const out = [w];
+  if (w.length > 4 && w.endsWith('ies')) out.push(w.slice(0, -3) + 'y');
+  else if (w.length > 4 && SIBILANT_ES.test(w)) out.push(w.slice(0, -2));
+  if (w.length > 3 && w.endsWith('s') && !w.endsWith('ss')) out.push(w.slice(0, -1));
+  return out;
 }
 
 // Each form keys to the singular, so "indices" resolves to "index", not the Porter stem
@@ -130,7 +213,9 @@ function derivedKeys(word, reduce) {
   const m = COMPOUND.exec(word);
   if (m) derived.add(m[1] + IRREGULAR.get(m[2]));
   if (GREEK_PLURAL.test(word)) derived.add(word.slice(0, -3) + 'sis');
-  return [...derived].map(reduce);
+  const out = [];
+  for (const d of derived) out.push(...reduce(d));
+  return out;
 }
 
 function lemma(word) {
@@ -148,8 +233,8 @@ module.exports = {
     if (mode === 'exact') return [w];
     const canon = IRREGULAR.get(w);
     if (canon) return [canon];
-    const reduce = mode === 'endingStrip' ? strip : stem;
-    return [...new Set([reduce(w), ...derivedKeys(w, reduce)])];
+    const reduce = mode === 'endingStrip' ? strip : (x) => [stem(x)];
+    return [...new Set([...reduce(w), ...derivedKeys(w, reduce)])];
   },
   lemma,
 };
