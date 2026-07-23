@@ -16,9 +16,11 @@ const NEUTER = new RegExp('(' + ['ματος', 'ματων', 'ματα', 'μασ
 const ENDINGS = [
   'ουσιν', 'οντων', 'ουσι', 'οντος', 'οντα', 'ουσα', 'μεθα', 'νται', 'σθε',
   'εως', 'εων', 'οις', 'ους', 'ται', 'ναι', 'μαι', 'σαι',
-  'ος', 'ου', 'ον', 'οι', 'ων', 'ης', 'ην', 'αι', 'ας', 'αν', 'εις', 'ει', 'ις',
-  'α', 'ε', 'η', 'ω', 'ι',
+  'ος', 'ου', 'ον', 'οι', 'ων', 'ης', 'ην', 'αι', 'ας', 'αν', 'εις', 'ει', 'ις', 'ες',
+  'α', 'ε', 'η', 'ω', 'ι', 'ο',
 ].map(fold).sort((a, b) => b.length - a.length);
+
+const NEUTER_I = /[^αεηιουω]ι$/;
 
 function strip(word) {
   const w = fold(word).replace(NEUTER, 'μα');
@@ -35,7 +37,12 @@ module.exports = {
   match: (word) => /[Ͱ-Ͽἀ-῿]/.test(word),
   keys(word, mode) {
     if (mode === 'exact') return [word.toLowerCase()];
-    if (mode === 'endingStrip') return [fold(word)];
-    return [strip(word)];
+    const cut = strip(word);
+    if (mode === 'endingStrip') return [cut];
+    // The -ί neuters keep the ι their oblique forms grow on (παιδί/παιδιού/παιδιά).
+    // Only after a consonant: -οι and -αι are endings of their own.
+    const w = fold(word);
+    return w !== cut && NEUTER_I.test(w) ? [cut, w] : [cut];
   },
+  lemma: (word) => strip(word),
 };
