@@ -1,4 +1,4 @@
-// Bump manifest + versions, rebuild, commit and tag. Run from a plugin root (bump.bat / npm run bump).
+// Bump manifest, versions and the npm files, rebuild, commit and tag. Run from a plugin root (bump.bat / npm run bump).
 // Arg: patch (default) | minor | major | an explicit x.y.z. Local only; push and release stay manual.
 
 import { execSync } from 'node:child_process';
@@ -31,6 +31,12 @@ console.log('  running tests…');
 try { execSync('npm test', { cwd: root, stdio: 'pipe' }); }
 catch { die('Tests failed — not bumping.'); }
 
+// Rewritten as text: re-serialising package.json reflows the hand-formatted keyword arrays.
+const pkgPath = join(root, 'package.json');
+const pkgText = readFileSync(pkgPath, 'utf8');
+const pkgNext = pkgText.replace(/^([ \t]*"version":[ \t]*")[^"]*"/m, `$1${next}"`);
+if (pkgNext === pkgText) die('No "version" field in package.json to bump.');
+
 manifest.version = next;
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
 
@@ -38,10 +44,22 @@ const versions = JSON.parse(readFileSync(versionsPath, 'utf8'));
 versions[next] = manifest.minAppVersion;
 writeFileSync(versionsPath, JSON.stringify(versions, null, 2) + '\n');
 
+writeFileSync(pkgPath, pkgNext);
+
+const lockPath = join(root, 'package-lock.json');
+const hasLock = existsSync(lockPath);
+if (hasLock) {
+  const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
+  lock.version = next;
+  if (lock.packages && lock.packages['']) lock.packages[''].version = next;
+  writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
+}
+
 console.log('  rebuilding…');
 execSync('npm run build', { cwd: root, stdio: 'pipe' });
 
-const artifacts = ['manifest.json', 'versions.json', 'main.js']
+const artifacts = ['manifest.json', 'versions.json', 'package.json', 'main.js']
+  .concat(hasLock ? ['package-lock.json'] : [])
   .concat(existsSync(join(root, 'styles.css')) ? ['styles.css'] : []);
 run('git add ' + artifacts.join(' '));
 run(`git commit -m "Bump version to ${next}"`);
