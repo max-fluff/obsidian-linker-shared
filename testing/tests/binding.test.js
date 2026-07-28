@@ -9,11 +9,15 @@ const { parseBinding, formatBinding, hashLine, bindStateFrom, LINE_RE, PAGE_RE, 
 
 describe('parseBinding', () => {
   it('reads the anchors a code link pins to', () => {
-    assert.deepStrictEqual(parseBinding('sym:Player kind:class'), { sym: 'Player', kind: 'class', sec: '', hash: '' });
+    assert.deepStrictEqual(parseBinding('sym:Player kind:class'), { sym: 'Player', kind: 'class', sec: '', cite: '', hash: '' });
   });
 
   it('maps the line token onto the hash field', () => {
-    assert.deepStrictEqual(parseBinding('line:h7x2k'), { sym: '', kind: '', sec: '', hash: 'h7x2k' });
+    assert.deepStrictEqual(parseBinding('line:h7x2k'), { sym: '', kind: '', sec: '', cite: '', hash: 'h7x2k' });
+  });
+
+  it('reads the citation key a document link pins to', () => {
+    assert.deepStrictEqual(parseBinding('cite:smith2020'), { sym: '', kind: '', sec: '', cite: 'smith2020', hash: '' });
   });
 
   it('treats a reader-written tooltip as not ours', () => {
@@ -36,12 +40,16 @@ describe('parseBinding', () => {
 
 describe('formatBinding', () => {
   it('round-trips every anchor', () => {
-    const binding = { sym: 'Move', kind: 'method', sec: 'Overview', hash: 'abc123' };
+    const binding = { sym: 'Move', kind: 'method', sec: 'Overview', cite: 'smith2020', hash: 'abc123' };
     assert.deepStrictEqual(parseBinding(formatBinding(binding)), binding);
   });
 
   it('keeps a fixed token order so re-pinning does not churn the text', () => {
-    assert.strictEqual(formatBinding({ hash: 'z9', sym: 'A', sec: 'S', kind: 'class' }), 'sym:A kind:class sec:S line:z9');
+    assert.strictEqual(formatBinding({ hash: 'z9', sym: 'A', sec: 'S', cite: 'k', kind: 'class' }), 'sym:A kind:class cite:k sec:S line:z9');
+  });
+
+  it('escapes a citation key holding characters a BibTeX key may carry', () => {
+    assert.strictEqual(parseBinding(formatBinding({ cite: 'müller_2019(a)' })).cite, 'müller_2019(a)');
   });
 
   it('escapes characters that would break the markdown destination', () => {
@@ -66,6 +74,8 @@ describe('ownership', () => {
 
   it('assigns a document binding to the reference plugin', () => {
     assert.strictEqual(bindingOwner('sec:Overview'), 'reference');
+    assert.strictEqual(bindingOwner('cite:smith2020'), 'reference');
+    assert.strictEqual(bindingOwner('cite:smith2020 sec:Overview'), 'reference');
   });
 
   it('leaves a tooltip and an empty title unowned', () => {

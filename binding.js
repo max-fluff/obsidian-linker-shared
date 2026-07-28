@@ -5,14 +5,14 @@
 // are requirements and combine by intersection; resolving them needs an index and belongs to
 // the plugin — everything here is text.
 
-const ANCHORS = { sym: 'sym', kind: 'kind', sec: 'sec', line: 'hash' };
-const TOKEN = /^(sym|kind|sec|line):(.+)$/;
+const ANCHORS = { sym: 'sym', kind: 'kind', sec: 'sec', cite: 'cite', line: 'hash' };
+const TOKEN = /^(sym|kind|sec|cite|line):(.+)$/;
 
 // Who a binding belongs to, read straight off the anchors: code writes sym/kind/line,
-// documents write sec, and the format predates ownership — notes written before it keep
+// documents write sec/cite, and the format predates ownership — notes written before it keep
 // working untouched. A binding mixing both sides is owned by nobody, so no plugin acts on a
 // binding it can't fully resolve.
-const OWNERS = { code: ['sym', 'kind', 'hash'], reference: ['sec'] };
+const OWNERS = { code: ['sym', 'kind', 'hash'], reference: ['sec', 'cite'] };
 
 function ownerOf(binding) {
   if (!binding) return null;
@@ -54,13 +54,13 @@ function hashLine(text) {
 function parseBinding(title) {
   const s = String(title || '').trim();
   if (!s) return null;
-  const b = { sym: '', kind: '', sec: '', hash: '' };
+  const b = { sym: '', kind: '', sec: '', cite: '', hash: '' };
   for (const word of s.split(/\s+/)) {
     const m = TOKEN.exec(word);
     if (!m) return null;
     b[ANCHORS[m[1]]] = decodeValue(m[2]);
   }
-  return b.sym || b.kind || b.sec || b.hash ? b : null;
+  return b.sym || b.kind || b.sec || b.cite || b.hash ? b : null;
 }
 
 // Written back out, order fixed so re-pinning doesn't churn the text.
@@ -68,6 +68,7 @@ function formatBinding(b) {
   const parts = [];
   if (b.sym) parts.push('sym:' + encodeValue(b.sym));
   if (b.kind) parts.push('kind:' + encodeValue(b.kind));
+  if (b.cite) parts.push('cite:' + encodeValue(b.cite));
   if (b.sec) parts.push('sec:' + encodeValue(b.sec));
   if (b.hash) parts.push('line:' + b.hash);
   return parts.join(' ');

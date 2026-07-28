@@ -67,8 +67,8 @@ Two more shared surfaces exist besides `api.linker`:
   hands round, holding shared submenus keyed by verb. It is the only memory two bundled
   copies of `menu.js` have in common.
 - **Binding anchors and root tokens in the notes themselves** — `sym:`/`kind:`/`line:`
-  (code), `sec:` (reference), `{code-root}`/`{ref-root}`/legacy `{root}`. Notes outlive
-  every plugin version.
+  (code), `sec:`/`cite:` (reference), `{code-root}`/`{ref-root}`/legacy `{root}`. Notes
+  outlive every plugin version.
 
 ## Version drift
 
