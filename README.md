@@ -30,14 +30,14 @@ one merged list.
 - `provider.js` — the `api.linker` contract as both prose plugins implement it
 - `editor-suggest.js`, `suggest.js` — autocomplete, merged across plugins
 - `choices.js`, `modals.js` — the ambiguity list and the dialogs that edit notes
-- `settings.js`, `folder-suggest.js` — the shared half of the settings tab
+- `settings.js`, `vault-suggest.js` — the shared half of the settings tab
 
-**The sigil pair** (`deeplink/`) — `suggest.js`, `folder-suggest.js`, plus `binding.js`,
+**The sigil pair** (`deeplink/`) — `suggest.js`, `disk-suggest.js`, plus `binding.js`,
 `actualize.js`, `root-token.js` and `update-preview.js` for the link-binding grammar.
 
 **Shared surface** — `i18n.js` + `locales/`, `markdown.js`, `morphology/` (the language
-modules both prose plugins use), `folder-list.js`, `popover.js`, `index-events.js`,
-`styles/`.
+modules both prose plugins use), `folder-list.js`, `suggest-base.js` (what the vault and disk
+completers have in common), `popover.js`, `index-events.js`, `styles/`.
 
 **Not shipped** — `build.mjs` (the esbuild driver), `testing/` (harness, stubs and the tests
 all four suites run), `branding/` (asset conventions in [`BRANDING.md`](branding/BRANDING.md)
