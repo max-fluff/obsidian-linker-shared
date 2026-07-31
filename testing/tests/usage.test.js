@@ -1,7 +1,7 @@
 'use strict';
 
 const { describe, it, assert } = require('../harness');
-const { createUsageCache } = require('../../prose/usage');
+const { createUsageCache, foldUsageInto, scanCandidateWords, aggregateCandidates } = require('../../prose/usage');
 
 const file = (path, mtime) => ({ path, stat: { mtime } });
 
@@ -71,5 +71,69 @@ describe('usage cache', () => {
     c.clear();
     await c.run([file('a', 1)], 'sig', compute);
     assert.strictEqual(runs.get('a'), 2);
+  });
+});
+
+// A plugin stand-in with just what scanCandidateWords reaches for: one note's text, a
+// trivial protector, and identity keys/lemma so a word's key is its lowercased self.
+function scanPlugin(text) {
+  return {
+    app: { vault: { cachedRead: async () => text } },
+    computeProtected: () => [],
+    overlapsProtected: () => false,
+    keysFor: (w) => [w.toLowerCase()],
+    lemmaFor: (w) => w.toLowerCase(),
+  };
+}
+
+describe('scanCandidateWords', () => {
+  const never = () => false;
+
+  it('groups surface forms under a lemma with a running total', async () => {
+    const here = await scanCandidateWords(scanPlugin('Cat cat cats'), {}, 2, never);
+    // identity lemma, so 'cat'/'cats' are two lemmas here; 'Cat' and 'cat' share one.
+    assert.strictEqual(here.get('cat').total, 2);
+    assert.deepStrictEqual([...here.get('cat').forms.entries()], [['Cat', 1], ['cat', 1]]);
+  });
+
+  it('skips bare numbers, short lemmas and words a term claims', async () => {
+    const isTerm = (keys) => keys.includes('cat');
+    const here = await scanCandidateWords(scanPlugin('cat dog 42 ok a'), {}, 2, isTerm);
+    assert.ok(!here.has('cat'), 'a term word is not a candidate');
+    assert.ok(!here.has('42'), 'a bare number is dropped');
+    assert.ok(!here.has('a'), 'a lemma shorter than minLen is dropped');
+    assert.ok(here.has('dog') && here.has('ok'));
+  });
+});
+
+describe('aggregateCandidates', () => {
+  const perNote = (map) => ({ value: new Map(Object.entries(map).map(([l, c]) => [l, { forms: new Map([[l, c]]), total: c }])) });
+
+  it('keeps a lemma only once it spans minNotes notes, ranked by spread then total', () => {
+    const results = [perNote({ wide: 1, rare: 5 }), perNote({ wide: 1 }), perNote({ wide: 1 })];
+    const out = aggregateCandidates(results, 2);
+    assert.deepStrictEqual(out.map((c) => c.lemma), ['wide'], 'rare appears in one note, below minNotes');
+    assert.strictEqual(out[0].docFreq, 3);
+    assert.strictEqual(out[0].count, 3);
+  });
+
+  it('caps the list at 100', () => {
+    const one = {};
+    for (let i = 0; i < 150; i++) one['w' + i] = 1;
+    assert.strictEqual(aggregateCandidates([perNote(one)], 1).length, 100);
+  });
+});
+
+describe('foldUsageInto', () => {
+  it('adds per-note counts into the skeleton and drops unknown ids', () => {
+    const counts = new Map([['A', { id: 'A', count: 0, files: [] }]]);
+    const results = [
+      { file: { path: 'n1.md' }, value: new Map([['A', 2], ['ghost', 9]]) },
+      { file: { path: 'n2.md' }, value: new Map([['A', 1]]) },
+    ];
+    foldUsageInto(counts, results);
+    assert.strictEqual(counts.get('A').count, 3);
+    assert.deepStrictEqual(counts.get('A').files, [{ path: 'n1.md', count: 2 }, { path: 'n2.md', count: 1 }]);
+    assert.ok(!counts.has('ghost'), 'a count for an unknown id is ignored');
   });
 });
