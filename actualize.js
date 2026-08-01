@@ -70,6 +70,18 @@ function staleLinksExtension(plugin, classes) {
   );
 }
 
+// Read and write in one step. Reading a note separately from writing it loses whatever was
+// typed in between — the edit is made against text the file no longer holds.
+async function processNote(plugin, file, transform) {
+  let count = 0;
+  await plugin.app.vault.process(file, (data) => {
+    const out = transform(plugin, data);
+    count = out.count;
+    return count ? out.text : data;
+  });
+  return count;
+}
+
 // An open editor keeps cursor and undo; reading view has none, so the file is rewritten
 // through the vault. `transform(plugin, text)` returns { text, count }.
 async function rewriteActiveNote(plugin, transform, noticeKey) {
@@ -83,16 +95,14 @@ async function rewriteActiveNote(plugin, transform, noticeKey) {
   }
   const file = plugin.app.workspace.getActiveFile();
   if (!file) { new Notice(t(noticeKey, { n: 0 })); return; }
-  const { text, count } = transform(plugin, await plugin.app.vault.read(file));
-  if (count) await plugin.app.vault.modify(file, text);
-  new Notice(t(noticeKey, { n: count }));
+  new Notice(t(noticeKey, { n: await processNote(plugin, file, transform) }));
 }
 
 async function rewriteVault(plugin, transform, noticeKey) {
   let files = 0, total = 0;
   for (const f of plugin.app.vault.getMarkdownFiles()) {
-    const { text, count } = transform(plugin, await plugin.app.vault.read(f));
-    if (count) { await plugin.app.vault.modify(f, text); files++; total += count; }
+    const count = await processNote(plugin, f, transform);
+    if (count) { files++; total += count; }
   }
   new Notice(t(noticeKey, { n: total, files }));
 }
