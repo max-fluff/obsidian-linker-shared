@@ -78,6 +78,76 @@
   margin: var(--p-spacing, 1em) 0;
 }
 
+/* The embed's header is a row: the title takes what is left of it, the toolbar sits at the
+   end. The controls are Obsidian's own clickable-icon, so they read as the app's. */
+.%p%-embed-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.%p%-embed-title {
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Obsidian floats its own edit-block button over the top right of a rendered block, so the
+   last control keeps clear of it. */
+.%p%-embed-tools {
+  padding-right: 22px;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 2px;
+  opacity: var(--%p%-embed-tools-idle, 1);
+  transition: opacity 100ms ease-out;
+}
+
+.%p%-embed:hover .%p%-embed-tools,
+.%p%-embed:focus-within .%p%-embed-tools {
+  opacity: 1;
+}
+
+.%p%-embed-group {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.%p%-embed-group:empty {
+  display: none;
+}
+
+.%p%-embed-group + .%p%-embed-group {
+  margin-left: 4px;
+  padding-left: 5px;
+  border-left: 1px solid var(--background-modifier-border);
+}
+
+.%p%-embed-button {
+  height: auto;
+  padding: 2px 4px;
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+}
+
+.%p%-embed-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.%p%-embed-button.is-active {
+  color: var(--text-accent);
+}
+
+.%p%-embed-button.is-hidden,
+.%p%-embed-group.is-hidden {
+  display: none;
+}
+
 .%p%-embed-error,
 .%p%-embed-note {
   padding: 6px 10px;

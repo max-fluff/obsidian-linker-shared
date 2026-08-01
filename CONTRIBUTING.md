@@ -140,6 +140,11 @@ this repo. That is a supported configuration, not an error. The rules that keep 
     exception, for a plugin's own set of related items that only read together.
   - Deciding up front is not a style choice: an item already in Obsidian's menu cannot be
     pulled back out and reparented.
+- An embed's **toolbar carries only what changes the view** — a page, a zoom, how a snippet is
+  wrapped. Anything that edits the note the block sits in — pinning, unpinning, fixing a drifted
+  window, writing a view back — belongs to the menu behind `⋯`, which is the right-click menu
+  and repeats the toolbar's own actions for an embed that failed and has no toolbar to show.
+  A stray click on a toolbar must never rewrite a note.
 - Commits: one-line imperative subject, no body.
 - Keep the Obsidian plugin review guidelines in mind: `this.app` only, `vault.process` for
   note edits, feature-detect APIs newer than the minimum app version.

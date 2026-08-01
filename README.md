@@ -33,7 +33,9 @@ one merged list.
 - `settings.js`, `vault-suggest.js` — the shared half of the settings tab
 
 **The sigil pair** (`deeplink/`) — `suggest.js`, `disk-suggest.js`, plus `binding.js`,
-`actualize.js`, `root-token.js` and `update-preview.js` for the link-binding grammar.
+`actualize.js`, `root-token.js` and `update-preview.js` for the link-binding grammar, and
+`embed-frame.js` for the fenced blocks both of them render: the block grammar, the header with
+its toolbar over a body, the re-render on an index change, and writing a block back to its note.
 
 **Shared surface** — `i18n.js` + `locales/`, `markdown.js`, `morphology/` (the language
 modules both prose plugins use), `folder-list.js`, `suggest-base.js` (what the vault and disk
