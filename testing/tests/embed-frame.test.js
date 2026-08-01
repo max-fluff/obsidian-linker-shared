@@ -7,7 +7,7 @@ const { describe, it, assert } = require('../harness');
 const { installStubs } = require('../stubs');
 
 installStubs();
-const { parseSpec, setSpecLine } = require('../../embed-frame');
+const { parseSpec, setSpecLine, inEditor } = require('../../embed-frame');
 
 const KEYS = ['page', 'zoom', 'title'];
 
@@ -36,6 +36,31 @@ describe('parseSpec', () => {
 
   it('keeps the first target when the block names several', () => {
     assert.strictEqual(parseSpec('a.pdf\nb.pdf', KEYS).target, 'a.pdf');
+  });
+});
+
+// A container that answers closest() over the ancestor classes Obsidian would have given it.
+const container = (...classes) => ({
+  closest: (sel) => (sel.split(',').some((s) => classes.includes(s.trim().slice(1))) ? {} : null),
+});
+
+describe('whether a block may rewrite its own note', () => {
+  it('may, in live preview, where the note is open in an editor', () => {
+    assert.strictEqual(inEditor(container('markdown-source-view', 'cm-content')), true);
+  });
+
+  it('may not, in reading view', () => {
+    assert.strictEqual(inEditor(container('markdown-reading-view', 'markdown-preview-view')), false);
+  });
+
+  it('may not, in a hover preview or an embedded note', () => {
+    assert.strictEqual(inEditor(container('hover-popover', 'markdown-preview-view')), false);
+  });
+
+  it('may not, where it cannot tell — shown beats edited when the container is unfamiliar', () => {
+    assert.strictEqual(inEditor(container()), false);
+    assert.strictEqual(inEditor({}), false);
+    assert.strictEqual(inEditor(null), false);
   });
 });
 

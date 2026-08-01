@@ -60,6 +60,10 @@ async function writeEmbedBody(app, sourcePath, info, body) {
   return !moved;
 }
 
+// Reading view renders a note, it does not edit one, and there is no editor there to undo a
+// write in. An unrecognised container counts as reading: shown, not edited, is the safer read.
+const inEditor = (el) => !!(el && el.closest && el.closest('.markdown-source-view'));
+
 function toolButton(parent, cls, icon, label, onClick) {
   const b = parent.createEl('button', {
     cls: 'clickable-icon ' + cls + '-embed-button',
@@ -137,6 +141,8 @@ class EmbedFrame extends obsidian.MarkdownRenderChild {
 
   refresh() { return this.render(true); }
 
+  editable() { return inEditor(this.containerEl); }
+
   notice(text) {
     this.release();
     this.chrome = null;
@@ -203,4 +209,4 @@ class EmbedFrame extends obsidian.MarkdownRenderChild {
   }
 }
 
-module.exports = { EmbedFrame, parseSpec, setSpecLine, writeEmbedBody, toolButton };
+module.exports = { EmbedFrame, parseSpec, setSpecLine, writeEmbedBody, toolButton, inEditor };
