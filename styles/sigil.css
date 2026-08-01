@@ -78,8 +78,7 @@
   margin: var(--p-spacing, 1em) 0;
 }
 
-/* The embed's header is a row: the title takes what is left of it, the toolbar sits at the
-   end. The controls are Obsidian's own clickable-icon, so they read as the app's. */
+/* The embed's header is a row: the title takes what is left, the toolbar sits at the end. */
 .%p%-embed-header {
   display: flex;
   align-items: center;
