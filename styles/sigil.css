@@ -78,17 +78,21 @@
   margin: var(--p-spacing, 1em) 0;
 }
 
-/* The embed's header is a row: the title takes what is left, the toolbar sits at the end. */
+/* The embed's header is a row: the title takes what is left, the toolbar sits at the end.
+   It wraps because a narrow block cannot hold both, and the embed clips what overflows. */
 .%p%-embed-header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
 }
 
+/* The title yields its width to the toolbar, but not all of it: shrinking to nothing is how
+   it kept the row on one line and pushed the last controls out of the box. */
 .%p%-embed-title {
   cursor: pointer;
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 6em;
+  min-width: 4em;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -99,7 +103,9 @@
   padding-right: 22px;
   display: flex;
   align-items: center;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 2px;
   opacity: var(--%p%-embed-tools-idle, 1);
   transition: opacity 100ms ease-out;
