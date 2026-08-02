@@ -5,14 +5,31 @@
 // are requirements and combine by intersection; resolving them needs an index and belongs to
 // the plugin — everything here is text.
 
-const ANCHORS = { sym: 'sym', kind: 'kind', sec: 'sec', cite: 'cite', line: 'hash' };
-const TOKEN = /^(sym|kind|sec|cite|line):(.+)$/;
+// Every anchor, listed in the order formatBinding writes them. `token` is the word in the
+// title, `field` the name it parses into, `owner` the plugin that may act on it; all three are
+// wire format and frozen (see CONTRIBUTING). One more anchor is one more row here — spelling
+// it in five places is how the five drifted apart.
+const ANCHOR_LIST = [
+  { token: 'sym', field: 'sym', owner: 'code' },
+  { token: 'kind', field: 'kind', owner: 'code' },
+  { token: 'cite', field: 'cite', owner: 'reference' },
+  { token: 'sec', field: 'sec', owner: 'reference' },
+  // A hash is base36 already, so it is the one value written through unescaped.
+  { token: 'line', field: 'hash', owner: 'code', raw: true },
+];
 
-// Who a binding belongs to, read straight off the anchors: code writes sym/kind/line,
-// documents write sec/cite, and the format predates ownership — notes written before it keep
-// working untouched. A binding mixing both sides is owned by nobody, so no plugin acts on a
-// binding it can't fully resolve.
-const OWNERS = { code: ['sym', 'kind', 'hash'], reference: ['sec', 'cite'] };
+const ANCHORS = {};
+const FIELDS = [];
+// Who a binding belongs to: code writes sym/kind/line, documents write sec/cite, and the
+// format predates ownership — notes written before it keep working untouched. A binding mixing
+// both sides is owned by nobody, so no plugin acts on a binding it can't fully resolve.
+const OWNERS = {};
+for (const a of ANCHOR_LIST) {
+  ANCHORS[a.token] = a.field;
+  FIELDS.push(a.field);
+  (OWNERS[a.owner] = OWNERS[a.owner] || []).push(a.field);
+}
+const TOKEN = new RegExp('^(' + ANCHOR_LIST.map((a) => a.token).join('|') + '):(.+)$');
 
 function ownerOf(binding) {
   if (!binding) return null;
@@ -54,23 +71,23 @@ function hashLine(text) {
 function parseBinding(title) {
   const s = String(title || '').trim();
   if (!s) return null;
-  const b = { sym: '', kind: '', sec: '', cite: '', hash: '' };
+  const b = {};
+  for (const f of FIELDS) b[f] = '';
   for (const word of s.split(/\s+/)) {
     const m = TOKEN.exec(word);
     if (!m) return null;
     b[ANCHORS[m[1]]] = decodeValue(m[2]);
   }
-  return b.sym || b.kind || b.sec || b.cite || b.hash ? b : null;
+  return FIELDS.some((f) => b[f]) ? b : null;
 }
 
 // Written back out, order fixed so re-pinning doesn't churn the text.
 function formatBinding(b) {
   const parts = [];
-  if (b.sym) parts.push('sym:' + encodeValue(b.sym));
-  if (b.kind) parts.push('kind:' + encodeValue(b.kind));
-  if (b.cite) parts.push('cite:' + encodeValue(b.cite));
-  if (b.sec) parts.push('sec:' + encodeValue(b.sec));
-  if (b.hash) parts.push('line:' + b.hash);
+  for (const a of ANCHOR_LIST) {
+    const v = b[a.field];
+    if (v) parts.push(a.token + ':' + (a.raw ? v : encodeValue(v)));
+  }
   return parts.join(' ');
 }
 
@@ -84,4 +101,4 @@ function bindStateFrom(hits, stored) {
   return { state: 'stale', line };
 }
 
-module.exports = { LINE_RE, PAGE_RE, OWNERS, hashLine, parseBinding, formatBinding, bindStateFrom, ownerOf, bindingOwner, ownsBinding };
+module.exports = { LINE_RE, PAGE_RE, ANCHORS, OWNERS, hashLine, parseBinding, formatBinding, bindStateFrom, ownerOf, bindingOwner, ownsBinding };
