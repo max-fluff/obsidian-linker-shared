@@ -47,6 +47,11 @@ function createSigilSuggest(config) {
       const f = this.plugin.parseQuery(ctx.query);
       const allowed = prepare(this.plugin);
       const pass = (e) => allowed(e) && this.plugin.entryPassesFilter(e, f);
+      // A query may ask to be matched against something other than the entry's name — a
+      // citation key, a section. Plugins that offer nothing of the sort never define this.
+      const against = this.plugin.matchTextFor
+        ? (e) => this.plugin.matchTextFor(e, f)
+        : (e) => e.name;
 
       // A filter with no name yet ("py:", "sec:", "Foo.") lists what passes it.
       if (!f.name) {
@@ -64,7 +69,7 @@ function createSigilSuggest(config) {
       const scored = [];
       for (const e of idx) {
         if (!pass(e)) continue;
-        const r = match(e.name);
+        const r = match(against(e));
         if (r) scored.push({ e, score: r.score });
       }
       scored.sort((a, b) => b.score - a.score || a.e.name.localeCompare(b.e.name));
