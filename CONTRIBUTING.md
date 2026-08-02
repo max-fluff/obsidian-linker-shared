@@ -70,6 +70,43 @@ Two more shared surfaces exist besides `api.linker`:
   (code), `sec:`/`cite:` (reference), `{code-root}`/`{ref-root}`/legacy `{root}`. Notes
   outlive every plugin version.
 
+### Facets: one projection, three uses
+
+A sigil plugin declares each way an index entry can be addressed once, as a **facet** — a
+projection from an entry to a value (`facets.js`). That one projection answers all three
+questions the plugins used to answer separately: which entries a typed filter keeps, what the
+typed text is matched against, and what a link pins to. Adding a way to address an entry is a
+row in the plugin's facet list, not an edit in three files.
+
+How a facet is typed follows from how many values it has, and this is the rule to apply when
+adding one:
+
+- **Enumerable** (a language, a kind) — typed as the value alone: `py:`, `def:`. Declare
+  `typed: VALUE` and a `resolve(token)`.
+- **Unbounded** (a citation key, a section name) — typed after its own token:
+  `cite:knuth1984`. Declare `typed: TOKEN`. It ends the prefix run, takes the rest as the
+  value, and redirects what the suggest matches against.
+
+A facet that also declares an `anchor` is pinnable, and the anchor must be a row in
+`binding.js`'s `ANCHOR_LIST` — that list is the frozen wire format (tokens, fields, owners and
+the order `formatBinding` writes them), so one anchor is one row there and nowhere else. Where
+the pinned value comes from is the plugin's: reference reads it off the entry (`of`), code off
+the spot in the file the link points at (`pinFrom`), since that is what each pins from.
+
+Not every facet does both, and forcing it would lie: `line:` pins to a hash of the source
+line, which no one can type, and a file extension filters well but is already in the path, so
+pinning it would say nothing the link does not.
+
+### Two link grammars
+
+`markdown.js` owns `[text](url "title")` and `wikilink.js` owns `[[file#heading^block|display]]`.
+The sigil pair writes markdown links, the prose pair writes wikilinks, and neither grammar is
+ever re-implemented in a plugin. Two things are worth knowing before touching `wikilink.js`:
+a rewrite walks right to left so the offsets still to come stay true, which means a caller
+keying its changes by a counter numbers them backwards — key by `link.start` instead; and
+inside a table cell the alias pipe is written `\|`, stripped on the way in and put back on the
+way out, or it ends up inside the heading.
+
 ## Version drift
 
 Plugins update independently, so one vault can run plugins built from different commits of
