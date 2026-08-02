@@ -184,9 +184,12 @@ class RecordingSetting {
   addTextArea(cb) { return this.textLike(cb, 'textarea'); }
 
   textLike(cb, type) {
-    const c = { type, value: null, inputEl: { type: '', min: '', rows: 0 } };
+    // A real input is an element: tabs widen it with addClass and listen on blur, and a stub
+    // that is a bare bag of fields makes the tab throw where the app would not.
+    const c = { type, value: null, inputEl: Object.assign(elLike(), { type: '', min: '', rows: 0 }) };
     const api = {
       inputEl: c.inputEl,
+      setPlaceholder: (v) => { c.placeholder = v; return api; },
       setValue: (v) => { c.value = v; return api; },
       onChange: (fn) => { c.change = fn; return api; },
     };
