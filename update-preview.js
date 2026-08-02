@@ -160,14 +160,21 @@ async function updateInActiveNote(plugin, rewrite, prefix) {
   openUpdatePreview(plugin, [{ file, label: file.path, original, changes: c.changes, broken: c.broken }], rewrite, prefix);
 }
 
-async function updateInVault(plugin, rewrite, prefix) {
+// Every note the rewrite would touch, with what it would change and what it cannot fix. The
+// dry run reads and never writes, so this is also how a report of a vault's broken links is
+// taken — the preview and the report must walk the same way or they would disagree.
+async function scanVault(plugin, rewrite) {
   const entries = [];
   for (const f of plugin.app.vault.getMarkdownFiles()) {
     const original = await plugin.app.vault.read(f);
     const c = rewrite(plugin, original, null);
     if (c.changes.length || c.broken.length) entries.push({ file: f, label: f.path, original, changes: c.changes, broken: c.broken });
   }
-  openUpdatePreview(plugin, entries, rewrite, prefix);
+  return entries;
 }
 
-module.exports = { UpdatePreviewModal, applyUpdates, openUpdatePreview, updateInActiveNote, updateInVault };
+async function updateInVault(plugin, rewrite, prefix) {
+  openUpdatePreview(plugin, await scanVault(plugin, rewrite), rewrite, prefix);
+}
+
+module.exports = { UpdatePreviewModal, applyUpdates, openUpdatePreview, updateInActiveNote, updateInVault, scanVault };
