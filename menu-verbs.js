@@ -19,6 +19,8 @@ const VERBS = {
   exclude: { label: 'exclude.group', icon: 'ban' },
 };
 
+const verbKey = (verb, value) => verb + ' ' + (value == null ? '' : String(value));
+
 // Records what the handler asks for, then writes it. Stands in for Obsidian's Menu, so a
 // handler that already builds items against `menu` needs no changes beyond tagging.
 class MenuBuilder {
@@ -53,23 +55,25 @@ class MenuBuilder {
     return child;
   }
 
-  // Verb -> the object it acts on, for those that earned a submenu. All items of one verb in
-  // one menu act on the same object, so the first one's value names the group.
+  // Which (verb, object) pairs earned a submenu. Counted per object, not per verb: a group
+  // is named after the object it acts on, so items reaching for different ones — excluding
+  // this spelling, dropping that heading — stay apart and keep their full wording.
   groupedVerbs() {
     const counts = new Map();
     for (const e of this.entries) {
       if (!e.verb) continue;
-      const seen = counts.get(e.verb) || { count: 0, value: e.value };
+      const key = verbKey(e.verb, e.value);
+      const seen = counts.get(key) || { count: 0, verb: e.verb, value: e.value };
       seen.count++;
-      counts.set(e.verb, seen);
+      counts.set(key, seen);
     }
     const provider = this.plugin.api && this.plugin.api.linker;
-    const grouped = new Map();
-    for (const [verb, { count, value }] of counts) {
+    const grouped = new Set();
+    for (const [key, { count, verb, value }] of counts) {
       // A peer may contribute more than one item, but any peer at all is enough: with
       // something of ours and something of theirs the group has earned itself.
       const peers = provider ? peersOffering(this.plugin.app, provider, verb, value).length : 0;
-      if (count + peers > 1) grouped.set(verb, value);
+      if (count + peers > 1) grouped.add(key);
     }
     return grouped;
   }
@@ -85,10 +89,12 @@ class MenuBuilder {
     }
   }
 
+  // The key carries the object too, so two plugins excluding the same word still land in one
+  // submenu while two acting on different ones do not.
   sectionFor(verb, value) {
     const spec = VERBS[verb];
     const label = t(spec.label, value == null ? undefined : { value });
-    return sharedSection(this.menu, 'linker:' + verb, label, spec.icon);
+    return sharedSection(this.menu, 'linker:' + verbKey(verb, value), label, spec.icon);
   }
 
   // Replayed in declaration order, so a verb's submenu appears where its first item would
@@ -99,12 +105,13 @@ class MenuBuilder {
     for (const e of this.entries) {
       if (e.separator) { this.menu.addSeparator(); continue; }
       if (e.section) { this.writeSection(e); continue; }
-      if (!e.verb || !grouped.has(e.verb)) {
+      const key = e.verb ? verbKey(e.verb, e.value) : null;
+      if (!key || !grouped.has(key)) {
         this.menu.addItem((item) => e.cb(item, false));
         continue;
       }
-      if (!sections.has(e.verb)) sections.set(e.verb, this.sectionFor(e.verb, grouped.get(e.verb)));
-      sections.get(e.verb).addItem((item) => e.cb(item, true));
+      if (!sections.has(key)) sections.set(key, this.sectionFor(e.verb, e.value));
+      sections.get(key).addItem((item) => e.cb(item, true));
     }
   }
 }

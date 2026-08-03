@@ -71,6 +71,17 @@ describe('menu builder', () => {
     assert.strictEqual(group(titles[0]), group(titles[1]), 'two groups instead of one');
   });
 
+  it('keeps items of one verb apart when they act on different objects', () => {
+    // Excluding a spelling and dropping the heading it reached are both "exclude", but a
+    // group is named after one object, and inside it the wording drops the other's name.
+    const menu = fakeMenu();
+    buildMenu(pluginWith(), menu, (m) => {
+      m.tagged('exclude', { value: 'specifically' }, (item, grouped) => item.setTitle(grouped ? 'short' : 'the word'));
+      m.tagged('exclude', { value: 'Specification' }, (item, grouped) => item.setTitle(grouped ? 'short' : 'the heading'));
+    });
+    assert.deepStrictEqual(menu.titles(), ['the word', 'the heading']);
+  });
+
   it('groups a lone item when a sibling offers the same verb', () => {
     const menu = fakeMenu();
     buildMenu(pluginWith(offering('peer')), menu, (m) => {
