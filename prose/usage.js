@@ -47,8 +47,8 @@ function foldUsageInto(counts, results) {
 }
 
 // Read one note for the candidate scan: how often each surface word's lemma appears, with
-// the forms behind it, skipping numbers, protected spans and words `isTermWord(keys)` claims
-// (already a term, or excluded). Returns lemma -> { forms: Map<surface, count>, total }.
+// the forms behind it, skipping numbers, protected spans and words `isTermWord(keys, raw)`
+// claims (already a term, or excluded). Returns lemma -> { forms: Map<surface, count>, total }.
 async function scanCandidateWords(plugin, file, minLen, isTermWord) {
   const here = new Map();
   let text;
@@ -58,7 +58,7 @@ async function scanCandidateWords(plugin, file, minLen, isTermWord) {
     const raw = m[0];
     if (/^\p{Nd}+$/u.test(raw)) continue;
     if (plugin.overlapsProtected(protect, m.index, m.index + raw.length)) continue;
-    if (isTermWord(plugin.keysFor(raw))) continue;
+    if (isTermWord(plugin.keysFor(raw), raw)) continue;
     const lemma = plugin.lemmaFor(raw);
     if (lemma.length < minLen) continue;
     let g = here.get(lemma);
