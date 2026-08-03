@@ -25,17 +25,44 @@ const chainable = () => {
   return o;
 };
 const menuLike = () => ({ addItem: (cb) => { cb(chainable()); return menuLike(); }, addSeparator: noop, showAtMouseEvent: noop });
-function elLike() {
+// Enough of an element to render into and then read back: children, classes and listeners
+// are recorded, so a widget built out of raw DOM (the list editors) can be driven by a test
+// rather than only rendered without throwing.
+function elLike(tag) {
+  const child = (t, o) => {
+    const c = elLike(t);
+    if (o) {
+      if (o.cls) c.cls = o.cls;
+      if (o.type) c.attrs.type = o.type;
+      if (o.text) c.text = o.text;
+      if (o.attr) Object.assign(c.attrs, o.attr);
+    }
+    el.children.push(c);
+    return c;
+  };
   const el = {
-    createEl: () => elLike(), createDiv: () => elLike(), createSpan: () => elLike(),
-    empty: noop, addClass: noop, removeClass: noop, setText: noop, appendChild: noop,
+    tag: tag || '', cls: '', text: '', value: '', attrs: {}, children: [], handlers: {},
+    createEl: (t, o) => child(t, o), createDiv: (o) => child('div', o), createSpan: (o) => child('span', o),
+    empty: () => { el.children.length = 0; },
+    addClass: (v) => { el.cls = el.cls ? `${el.cls} ${v}` : v; },
+    setText: (v) => { el.text = String(v); },
+    addEventListener: (name, fn) => { (el.handlers[name] || (el.handlers[name] = [])).push(fn); },
+    // Fire what a test just typed or clicked at whatever the widget listened for.
+    fire: (name, ev) => { for (const fn of el.handlers[name] || []) fn(ev || {}); },
+    removeClass: noop, appendChild: noop, focus: noop,
     hide: noop, show: noop, toggleClass: noop, detach: noop, remove: noop,
     querySelectorAll: () => [], setAttribute: noop, getAttribute: () => null, removeAttribute: noop,
     hasAttribute: () => false, closest: () => null, replaceChild: noop, parentNode: null,
-    addEventListener: noop, style: {}, classList: { add: noop, contains: () => false, toggle: noop },
+    style: {}, classList: { add: noop, contains: () => false, toggle: noop },
     onclick: null, checked: false,
   };
   return el;
+}
+
+// Every element under `root`, the root included — the flat view a test wants when it is
+// looking for "the input in the third row".
+function elTree(root) {
+  return [root, ...(root.children || []).flatMap(elTree)];
 }
 
 const stub = {
@@ -243,4 +270,4 @@ function fakeEditor(line, ch) {
   };
 }
 
-module.exports = { obsidianStub: stub, cmStub: cm, fakeApp: app, installStubs, recordingMenu, RecordingSetting, elLike, fakeEditor };
+module.exports = { obsidianStub: stub, cmStub: cm, fakeApp: app, installStubs, recordingMenu, RecordingSetting, elLike, elTree, fakeEditor };

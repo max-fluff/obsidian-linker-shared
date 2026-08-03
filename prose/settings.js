@@ -66,13 +66,27 @@ function renderMatchLimits(containerEl, ctx) {
     .setDesc(t('set.linkFirstOnly.desc'))
     .addToggle((c) => c.setValue(s.linkFirstOnly).onChange(async (v) => { s.linkFirstOnly = v; await ctx.save(false); }));
 
-  new Setting(containerEl)
-    .setName(t('set.excludeTerms.name'))
-    .setDesc(t('set.excludeTerms.desc'))
-    .addTextArea((c) => {
-      c.setValue(s.excludeTerms).onChange(async (v) => { s.excludeTerms = v; await ctx.save(true); });
-      c.inputEl.rows = 3;
-    });
+  renderExclusionList(containerEl, ctx, 'excludeTerms');
+}
+
+// An exclusion list: entries editable in place, folded away behind a chevron, and scrolling
+// rather than growing once it is long. Both lists of both prose linkers are drawn by this.
+function renderExclusionList(containerEl, ctx, key) {
+  const s = settingsOf(ctx);
+  renderFolderList(containerEl, {
+    cls: ctx.cls,
+    name: t(`set.${key}.name`),
+    desc: t(`set.${key}.desc`),
+    get: () => s[key],
+    set: async (v) => { s[key] = v; await ctx.save(true); },
+    editable: true,
+    fold: { owner: ctx.tab, key },
+    placeholder: t('set.exclusionList.add'),
+    addLabel: t('set.exclusionList.addAria'),
+    removeLabel: t('set.exclusionList.remove'),
+    showLabel: t('set.exclusionList.show'),
+    hideLabel: t('set.exclusionList.hide'),
+  });
 }
 
 // Re-reading the language set changes every stem, so the whole index goes and the tab
@@ -267,6 +281,7 @@ function createProseSettings(tab, opts) {
     menuToggles: (el, keys) => renderMenuToggles(el, ctx, keys),
     scopeMode: (el, saveScope) => renderScopeMode(el, ctx, saveScope),
     pathList: (el, o) => renderPathList(el, ctx, o),
+    exclusionList: (el, key) => renderExclusionList(el, ctx, key),
     positiveNumber: (el, key, rebuild) => positiveNumber(el, ctx, key, rebuild),
   };
 }

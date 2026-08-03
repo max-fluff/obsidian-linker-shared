@@ -4,7 +4,7 @@
 // the index yields must rebuild it, one that only changes what is drawn must not.
 
 const { describe, it, assert } = require('../harness');
-const { installStubs, obsidianStub, RecordingSetting, elLike } = require('../stubs');
+const { installStubs, obsidianStub, RecordingSetting, elLike, elTree } = require('../stubs');
 
 installStubs();
 
@@ -38,6 +38,23 @@ function fakeTab(settings, extra) {
   const sections = createProseSettings(tab, { cls: 'prose', save: async (rebuild) => { calls.save.push(rebuild); } });
   return { tab, sections, calls };
 }
+
+// The exclusion list is raw DOM under a folded header, so a test opens it through the
+// header's chevron and then reaches into the host for the boxes the widget drew. The last
+// matching row wins: every redraw records a fresh header.
+const listHeader = (name) => [...RecordingSetting.entries].reverse()
+  .find((e) => e.name === name || e.name.startsWith(`${name} (`));
+const openList = (name) => listHeader(name).controls[0].click();
+const inputsIn = (host) => elTree(host).filter((e) => e.tag === 'input');
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
+const addToList = async (host, value) => {
+  const boxes = inputsIn(host);
+  const add = boxes[boxes.length - 1];
+  add.value = value;
+  add.fire('keydown', { key: 'Enter', preventDefault: () => {} });
+  await settle();
+};
 
 const baseSettings = () => ({
   matchMode: 'stemmer', minTermLength: 3, linkFirstOnly: false, excludeTerms: '',
@@ -74,9 +91,53 @@ describe('prose settings sections', () => {
     assert.deepStrictEqual(calls.save, [false]);
 
     // The exclusion list is the exception in this section: it changes what matches.
-    await RecordingSetting.control(t('set.excludeTerms.name')).change('foo\nbar');
-    assert.strictEqual(s.excludeTerms, 'foo\nbar');
-    assert.deepStrictEqual(calls.save, [false, true]);
+    const host = elLike();
+    const s2 = baseSettings();
+    const two = fakeTab(s2);
+    two.sections.exclusionList(host, 'excludeTerms');
+    openList(t('set.excludeTerms.name'));
+    await addToList(host, 'foo');
+    assert.strictEqual(s2.excludeTerms, 'foo');
+    assert.deepStrictEqual(two.calls.save, [true]);
+  });
+
+  it('keeps the exclusion list folded until the reader opens it', () => {
+    RecordingSetting.reset();
+    const host = elLike();
+    fakeTab(baseSettings()).sections.exclusionList(host, 'excludeTerms');
+    assert.strictEqual(inputsIn(host).length, 0, 'drew the list before it was opened');
+
+    openList(t('set.excludeTerms.name'));
+    assert.strictEqual(inputsIn(host).length, 1, 'opening it should leave the add box');
+  });
+
+  it('writes an edited row back to the setting', async () => {
+    RecordingSetting.reset();
+    const host = elLike();
+    const s = baseSettings();
+    s.excludeTerms = 'lead\nspawn';
+    const { calls } = fakeTab(s);
+    fakeTab(s).sections.exclusionList(host, 'excludeTerms');
+    openList(t('set.excludeTerms.name'));
+
+    const [first] = inputsIn(host);
+    first.value = 'leads';
+    first.fire('change');
+    await settle();
+    assert.strictEqual(s.excludeTerms, 'leads\nspawn');
+    assert.ok(listHeader(t('set.excludeTerms.name')).name.endsWith('(2)'), 'the header should count the rows');
+    assert.strictEqual(calls.rebuildIndex, 0, 'the tab\'s own save hook does the rebuilding');
+  });
+
+  it('turns the rows into a scroller once the list is long', () => {
+    RecordingSetting.reset();
+    const host = elLike();
+    const s = baseSettings();
+    s.excludeTerms = Array.from({ length: 11 }, (_, i) => `word${i}`).join('\n');
+    fakeTab(s).sections.exclusionList(host, 'excludeTerms');
+    openList(t('set.excludeTerms.name'));
+
+    assert.ok(elTree(host).some((e) => /-list-scroll\b/.test(e.cls)), 'eleven rows should scroll, not grow');
   });
 
   it('floors the number boxes at 1 rather than storing 0 or NaN', async () => {
