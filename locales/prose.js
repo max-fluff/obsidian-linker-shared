@@ -36,10 +36,10 @@ const en = {
   // The shared submenu the exclusion items collect into, and their wording inside it, where
   // the parent already names the word.
   'exclude.group': 'Exclude “{value}”',
-  // Inside the group the parent already says "Exclude …", so an item names its reach and
-  // leaves the state to its tick — "Exclude ▸ Add" read as two verbs fighting.
-  'exclude.shortForm': 'This spelling',
-  'exclude.shortStem': 'Every form',
+  'silence.group': 'Stop linking “{value}”',
+  // The group already carries the verb, so an item only says how far it reaches.
+  'exclude.shortForm': 'this spelling',
+  'exclude.shortStem': 'every form of it',
   'label.selection': 'Selection',
   'modal.leftAsText': '(left as text)',
   'modal.skipOption': 'skip',
@@ -69,6 +69,11 @@ const en = {
   'set.statusBarIncludeLinks.name': 'Count existing links too',
   'set.folderList.add': 'Add path…',
   'set.folderList.addAria': 'Add',
+  'set.exclusionList.add': 'Add…',
+  'set.exclusionList.addAria': 'Add',
+  'set.exclusionList.remove': 'Remove',
+  'set.exclusionList.show': 'Show the list',
+  'set.exclusionList.hide': 'Hide the list',
   'plural.alias': { one: '{n} alias', other: '{n} aliases' },
 };
 
@@ -104,8 +109,9 @@ const ru = {
   'set.suggestPlainText.desc': 'Подсказка дописывает слово, не превращая его в ссылку.',
   'set.heading.contextMenu': 'Контекстное меню',
   'exclude.group': 'Исключить «{value}»',
-  'exclude.shortForm': 'Это написание',
-  'exclude.shortStem': 'Все формы',
+  'silence.group': 'Не связывать «{value}»',
+  'exclude.shortForm': 'это написание',
+  'exclude.shortStem': 'любую его форму',
   'label.selection': 'Выделение',
   'modal.leftAsText': '(оставлено текстом)',
   'modal.skipOption': 'пропустить',
@@ -135,6 +141,11 @@ const ru = {
   'set.statusBarIncludeLinks.name': 'Считать и уже связанные',
   'set.folderList.add': 'Добавить путь…',
   'set.folderList.addAria': 'Добавить',
+  'set.exclusionList.add': 'Добавить…',
+  'set.exclusionList.addAria': 'Добавить',
+  'set.exclusionList.remove': 'Убрать',
+  'set.exclusionList.show': 'Показать список',
+  'set.exclusionList.hide': 'Скрыть список',
   'plural.alias': { one: '{n} псевдоним', few: '{n} псевдонима', many: '{n} псевдонимов', other: '{n} псевдонимов' },
 };
 

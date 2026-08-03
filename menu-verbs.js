@@ -16,7 +16,10 @@ const { t } = require('./i18n');
 const VERBS = {
   convert: { label: 'menu.convert.group', icon: 'link' },
   open: { label: 'menu.open.group', icon: 'file-search' },
-  exclude: { label: 'exclude.group', icon: 'ban' },
+  // Two verbs, because stopping a word and dropping the term it reached are different acts:
+  // one leaves the term in the index, the other takes it out.
+  silence: { label: 'silence.group', icon: 'ban' },
+  exclude: { label: 'exclude.group', icon: 'trash-2' },
 };
 
 const verbKey = (verb, value) => verb + ' ' + (value == null ? '' : String(value));

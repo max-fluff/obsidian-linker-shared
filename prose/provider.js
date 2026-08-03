@@ -74,7 +74,7 @@ function createProseProvider(plugin, config) {
     linkFor: (target, display, inTable) => plugin.wikiLink(target, display, inTable),
     // Whether we would add a menu item of this verb for this text — asked before either
     // plugin writes one, since the grouping has to be settled first.
-    offers: (kind, text) => kind === 'exclude' && !!plugin.settings.menuExclude
+    offers: (kind, text) => (kind === 'exclude' || kind === 'silence') && !!plugin.settings.menuExclude
       && (plugin.findMatches(str(text), null).length > 0 || excludes(str(text))),
     refresh: () => plugin.rerenderViews(),
   };
