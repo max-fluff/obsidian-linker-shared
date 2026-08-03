@@ -36,8 +36,10 @@ const en = {
   // The shared submenu the exclusion items collect into, and their wording inside it, where
   // the parent already names the word.
   'exclude.group': 'Exclude “{value}”',
-  'exclude.addShort': 'Add to {noun}',
-  'exclude.removeShort': 'Remove from {noun}',
+  // Inside the group the parent already says "Exclude …", so an item names its reach and
+  // leaves the state to its tick — "Exclude ▸ Add" read as two verbs fighting.
+  'exclude.shortForm': 'This spelling',
+  'exclude.shortStem': 'Every form',
   'label.selection': 'Selection',
   'modal.leftAsText': '(left as text)',
   'modal.skipOption': 'skip',
@@ -102,8 +104,8 @@ const ru = {
   'set.suggestPlainText.desc': 'Подсказка дописывает слово, не превращая его в ссылку.',
   'set.heading.contextMenu': 'Контекстное меню',
   'exclude.group': 'Исключить «{value}»',
-  'exclude.addShort': 'Добавить в {noun}',
-  'exclude.removeShort': 'Убрать из {noun}',
+  'exclude.shortForm': 'Это написание',
+  'exclude.shortStem': 'Все формы',
   'label.selection': 'Выделение',
   'modal.leftAsText': '(оставлено текстом)',
   'modal.skipOption': 'пропустить',
