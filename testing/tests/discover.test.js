@@ -127,6 +127,28 @@ describe('yieldedCandidates', () => {
     assert.strictEqual(c.start, 2);
   });
 
+  // A word two of a peer's notes claimed used to arrive as a single row.
+  it('takes every meaning a peer declares for one span, not just the one it settled on', () => {
+    const ambiguous = { start: 2, end: 7, label: 'Spawn', target: 'a/Spawn.md', alts: [{ label: 'Spawn', target: 'b/Spawn.md' }] };
+    const app = appWith(self, provider('glossary-linker', 10, () => [ambiguous]));
+    const rows = yieldedCandidates(app, self, 'a spawn here');
+    assert.deepStrictEqual(rows.map((c) => c.target), ['a/Spawn.md', 'b/Spawn.md']);
+    assert.deepStrictEqual(rows.map((c) => c.start), [2, 2]);
+  });
+
+  it('asks each meaning about itself, so two rows are not described as one', () => {
+    const ambiguous = { start: 2, end: 7, label: 'Spawn', target: 'a/Spawn.md', alts: [{ label: 'Spawn', target: 'b/Spawn.md' }] };
+    const peer = provider('glossary-linker', 10, () => [ambiguous]);
+    peer.describe = (target) => ({ title: 'Spawn', note: target });
+    const rows = yieldedCandidates(appWith(self, peer), self, 'a spawn here');
+    assert.deepStrictEqual(rows.map((c) => c.describe('spawn').note), ['a/Spawn.md', 'b/Spawn.md']);
+  });
+
+  it('yields the one meaning for a peer built before alts existed', () => {
+    const app = appWith(self, provider('glossary-linker', 10, () => [spawn]));
+    assert.strictEqual(yieldedCandidates(app, self, 'a spawn here').length, 1);
+  });
+
   it('ignores a peer that outranks us — it drew the span, we skipped it', () => {
     const app = appWith(self, provider('glossary-linker', 99, () => [spawn]));
     assert.deepStrictEqual(yieldedCandidates(app, self, 'a spawn here'), []);

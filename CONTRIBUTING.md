@@ -49,7 +49,7 @@ siblings installed must behave exactly as it did before any of this existed.
 | `id`, `displayName` | Plugin id; human name for UI. |
 | `kind` | `'prose'` or `'sigil'`. Self-description; nothing consumes it today. |
 | `precedence` | Getter onto the plugin's setting. Higher wins a contested span; ties break by `id` so both sides reach the same verdict. |
-| `matches(text)` | Spans this plugin claims: `{start, end, label, target}`. A pure index question — whether the plugin is switched on anywhere is `drawsIn`'s business, not this one's. |
+| `matches(text)` | Spans this plugin claims: `{start, end, label, target}`, plus an optional `alts: [{label, target}]` for the other meanings this plugin has for the same span. Without `alts` a consumer sees only the one this plugin settled on, and a word two of its notes claim reads as a single row. A pure index question — whether the plugin is switched on anywhere is `drawsIn`'s business, not this one's. |
 | `describe(target, display)` | How one of this plugin's targets reads in a list of a word's meanings: `{title, note}`. One word can be claimed by several notes, so a row showing only the target renders as the same string repeated; the `note` is what tells it from its neighbour — the kind, where it lives, and which of your forms matched. `display` is the word the reader actually touched, which is the only way to say "you clicked A, this is B under its alias A" — drop it and every alias caption silently disappears. Asked only when a list is drawn. Optional; without it a row falls back to the bare target. |
 | `drawsIn(sourcePath, surface)` | Whether this plugin would put anything on that surface of that note — `'reading'`, `'editing'` or `'menu'`. Consumers ask before yielding a span: a plugin that claims a word it will not draw leaves the word shown by nobody. Optional; a peer without it is taken to draw everywhere, as it did before the member existed. |
 | `open(target, sourcePath, newTab)` | Open one of this plugin's targets. Only the owner interprets its own target format. |
@@ -142,6 +142,9 @@ this repo. That is a supported configuration, not an error. The rules that keep 
   `--background-modifier-border`, `--radius-s`, `--layer-popover`) rather than literal
   values, and scope every selector to a `%p%-` class — an unscoped `.setting-item` rule
   restyles other plugins' settings panes.
+- The `/* @settings */` block at the head of `src/styles.css` is the Style Settings plugin's
+  wire format, and `announceStyleSettings(this)` in `onload` is what makes it show up there:
+  Style Settings reads the document's sheets when it loads, and ours arrive with us.
 - `.github/workflows/build.yml` is byte-identical in all four plugins and cannot move here —
   GitHub only reads workflows from the repository itself. Change one, copy to the others.
 - Tests use the zero-dependency harness at `testing/harness.js` (Node 16 has no
