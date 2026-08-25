@@ -30,30 +30,34 @@ function refreshStaleLinks(app) {
   });
 }
 
-// Live Preview underline for drifted links, styled by the caller's own classes. Links
+// Live Preview marks for our own links, styled by the caller's own classes: every link we
+// own carries classes.link, and a drifted one adds classes.stale or .broken on top. Links
 // inside code are skipped via the syntax tree — there they're example text, so the commands
 // won't touch them and marking them would only mislead.
+//
+// markStaleLinks governs the drift classes only. The base class is what makes a link ours to
+// style at all, so it is drawn either way.
 function staleLinksExtension(plugin, classes) {
   const marks = {
-    stale: Decoration.mark({ class: classes.stale }),
-    broken: Decoration.mark({ class: classes.broken }),
+    '': Decoration.mark({ class: classes.link }),
+    stale: Decoration.mark({ class: classes.link + ' ' + classes.stale }),
+    broken: Decoration.mark({ class: classes.link + ' ' + classes.broken }),
   };
   const build = (view) => {
     const builder = new RangeSetBuilder();
-    if (plugin.settings.markStaleLinks) {
-      const tree = syntaxTree(view.state);
-      for (const { from, to } of view.visibleRanges) {
-        const text = view.state.doc.sliceString(from, to);
-        const re = linkRegex();
-        let m;
-        while ((m = re.exec(text))) {
-          const start = from + m.index;
-          const end = start + m[0].length;
-          let inCodeNode = false;
-          tree.iterate({ from: start, to: end, enter: (n) => { if (SKIP_NODE.test(n.type.name)) inCodeNode = true; } });
-          const state = inCodeNode ? null : plugin.linkState(m[2]);
-          if (state) builder.add(start, end, marks[state]);
-        }
+    const tree = syntaxTree(view.state);
+    for (const { from, to } of view.visibleRanges) {
+      const text = view.state.doc.sliceString(from, to);
+      const re = linkRegex();
+      let m;
+      while ((m = re.exec(text))) {
+        const start = from + m.index;
+        const end = start + m[0].length;
+        let inCodeNode = false;
+        tree.iterate({ from: start, to: end, enter: (n) => { if (SKIP_NODE.test(n.type.name)) inCodeNode = true; } });
+        if (inCodeNode || !plugin.ownsLink(m[2])) continue;
+        const state = plugin.settings.markStaleLinks ? plugin.linkState(m[2]) : null;
+        builder.add(start, end, marks[state || '']);
       }
     }
     return builder.finish();

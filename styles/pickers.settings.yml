@@ -1,0 +1,13 @@
+# Style Settings rows for the autocomplete every linker offers. See CONTRIBUTING.md.
+
+  -
+    id: %p%-autocomplete
+    title: Autocomplete
+    type: heading
+    level: 1
+  -
+    id: %p%-hide-suggestion-path
+    title: Hide the second column
+    description: Drop the note or path shown beside a suggestion, leaving the name alone.
+    type: class-toggle
+    default: false

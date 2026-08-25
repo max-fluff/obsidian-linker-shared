@@ -24,10 +24,18 @@ const STAMP = /\s*\/\* [^*]+ \d+\.\d+\.\d+ \*\/\s*$/;
 // `%p%` stands for the plugin's class prefix — the four do not share one, and class names
 // are global. It is substituted in the plugin's own file too, so moving a rule between the
 // two is a plain cut and paste.
+//
+// `%rows:<name>%`, alone on a line in the plugin's @settings block, is the same trade for the
+// Style Settings rows: `styles/<name>.settings.yml` is spliced in where the token sits. A
+// plugin takes only the fragments it can honour — a panel row in a plugin with no panel is a
+// setting that does nothing — and its own rows continue whichever section it ended on.
 function buildCss(name, version, kind, prefix) {
   const part = (p) => readFileSync(p, 'utf8').replace(STAMP, '').trimEnd().split('%p%').join(prefix);
   const shared = [join(HERE, 'styles/common.css'), join(HERE, `styles/${kind}.css`)].map(part).join('\n\n');
-  const own = part('src/styles.css');
+  // A fragment's own notes are for whoever edits it, so they are dropped rather than shipped
+  // inside the block Style Settings reads.
+  const rows = (id) => part(join(HERE, `styles/${id}.settings.yml`)).replace(/^[ \t]*#.*\n?/gm, '').replace(/^\n+/, '');
+  const own = part('src/styles.css').replace(/^%rows:([a-z]+)%$/gm, (_, id) => rows(id));
   const head = `/* ${name} ${version} — assembled from the shared styles and src/styles.css by "npm run build". Do not edit directly. */`;
   writeFileSync('styles.css', `${head}\n\n${shared}\n\n${own}\n\n/* ${name} ${version} */\n`);
 }

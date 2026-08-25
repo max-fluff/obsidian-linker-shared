@@ -1,17 +1,90 @@
 /* Styles both prose linkers use. The plugin class prefix is substituted by build.mjs. */
 
+/* Colours are declared, not merely read with a fallback. Style Settings shows a colour row's
+   live computed value when the row carries no default, and an undeclared variable reads as
+   empty and renders a blank swatch. Its own rule is `body.css-settings-manager`, so a colour
+   chosen there still outranks this. See CONTRIBUTING.md. */
+body {
+  --%p%-link-color: var(--link-color);
+  --%p%-link-color-hover: var(--link-color-hover);
+  --%p%-link-background: rgba(0, 0, 0, 0);
+  --%p%-link-background-hover: var(--%p%-link-background);
+  --%p%-ambiguous-color: var(--%p%-link-color);
+}
+
+/* What a highlight looks like in each state is decided in --pl-* below, where no theme
+   competes, and one rule spends them. That rule sits exactly where the plugin's has always
+   sat: a theme that paints its own links still wins, as it did before any of this was
+   configurable. See CONTRIBUTING.md. */
 .%p%-link,
 .cm-%p%-link {
-  color: var(--%p%-link-color, var(--link-color));
+  --pl-ink: var(--%p%-link-color);
+  --pl-bg: var(--%p%-link-background);
+  --pl-width: var(--%p%-underline-width, 1px);
+  --pl-style: var(--%p%-underline-style, dotted);
+}
+
+.%p%-ambiguous,
+.cm-%p%-ambiguous {
+  --pl-ink: var(--%p%-ambiguous-color);
+  --pl-width: var(--%p%-ambiguous-underline-width, 3px);
+  --pl-style: var(--%p%-ambiguous-underline-style, double);
+}
+
+.%p%-link:hover,
+.cm-%p%-link:hover {
+  --pl-ink: var(--%p%-link-color-hover);
+  --pl-bg: var(--%p%-link-background-hover);
+  --pl-style: var(--%p%-underline-style-hover, solid);
+}
+
+/* The tint marks a collision at rest and hover answers with the ordinary hover colour, but the
+   double underline stays either way — it is what says the word is ambiguous. */
+.%p%-ambiguous:hover,
+.cm-%p%-ambiguous:hover {
+  --pl-width: var(--%p%-ambiguous-underline-width, 3px);
+  --pl-style: var(--%p%-ambiguous-underline-style, double);
+}
+
+/* currentColor, not `inherit`: a CSS-wide keyword in a custom property makes the property
+   inherit rather than storing the word, and the highlight would keep its colour. */
+body.%p%-quiet .%p%-link:not(:hover),
+body.%p%-quiet .cm-%p%-link:not(:hover) {
+  --pl-ink: currentColor;
+  --pl-bg: transparent;
+  --pl-style: none;
+}
+
+/* The one rule that meets the theme's own. Every default here resolves to what the property
+   would have been with no rule at all — a transparent background, no radius, no offset,
+   inherited weight — so an untouched vault renders exactly as it did before.
+   The hover selectors carry no declarations of their own; they are listed so each state keeps
+   the specificity its own rule used to have, which is what decides a tie with the theme. */
+.%p%-link,
+.cm-%p%-link,
+.%p%-link:hover,
+.cm-%p%-link:hover {
+  color: var(--pl-ink);
+  background-color: var(--pl-bg);
+  border-radius: var(--%p%-link-radius, 0px);
+  border-bottom: var(--pl-width) var(--pl-style) var(--pl-ink);
+  /* Vertical padding on an inline box does not grow the line, so this offsets the border
+     without reflowing the paragraph. Horizontal padding would, so there is none. */
+  padding-bottom: var(--%p%-underline-offset, 0px);
+  font-weight: var(--%p%-link-weight, inherit);
   text-decoration: none;
-  border-bottom: 1px var(--%p%-underline-style, dotted) var(--%p%-link-color, var(--link-color));
   cursor: pointer;
 }
 
-/* Reading view builds the match as a real <a> so hover preview and click behave like any
-   link — and a theme underlines links, which lands a second line under our own. Ours is the
-   one carrying the underline-style setting, so the anchor's own decoration is switched off
-   here, at a specificity a theme's `.markdown-rendered a` rule can't outrank. */
+body.%p%-link-italic .%p%-link,
+body.%p%-link-italic .cm-%p%-link {
+  font-style: italic;
+}
+
+/* Reading view builds the match as a real <a>, and a theme underlines links — which lands a
+   second line under our own. Only that is answered here, at a specificity a theme's
+   `.markdown-rendered a` rule can't outrank; the colour is left to whoever the reader's theme
+   says wins, exactly as before. */
 a.%p%-link,
 a.%p%-link:hover,
 a.%p%-link.internal-link,
@@ -19,22 +92,22 @@ a.%p%-link.internal-link:hover {
   text-decoration: none;
 }
 
-.%p%-link:hover,
-.cm-%p%-link:hover {
-  color: var(--link-color-hover);
-  border-bottom-style: solid;
+/* `none` rather than an empty string: with no symbol chosen there is no pseudo-element at all.
+   The symbol is not part of the word, so it carries none of the word's underline — and it
+   survives quiet mode, which is the one thing quiet mode must not hide. */
+.%p%-ambiguous::before,
+.cm-%p%-ambiguous::before,
+body.%p%-mark-after .%p%-ambiguous::after,
+body.%p%-mark-after .cm-%p%-ambiguous::after {
+  content: var(--%p%-ambiguous-symbol, none);
+  border-bottom: none;
+  font-size: 0.8em;
+  vertical-align: super;
 }
 
-.%p%-ambiguous,
-.cm-%p%-ambiguous {
-  border-bottom-width: 3px;
-  border-bottom-style: var(--%p%-ambiguous-underline-style, double);
-}
-
-.%p%-ambiguous:hover,
-.cm-%p%-ambiguous:hover {
-  border-bottom-width: 3px;
-  border-bottom-style: var(--%p%-ambiguous-underline-style, double);
+body.%p%-mark-after .%p%-ambiguous::before,
+body.%p%-mark-after .cm-%p%-ambiguous::before {
+  content: none;
 }
 
 /* Autocomplete suggestion rows */
@@ -164,7 +237,7 @@ a.%p%-link.internal-link:hover {
 .%p%-choices {
   position: fixed;
   z-index: var(--layer-popover);
-  max-width: 320px;
+  max-width: var(--%p%-choices-width, 320px);
   padding: 6px;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);

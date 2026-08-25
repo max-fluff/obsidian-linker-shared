@@ -145,6 +145,53 @@ this repo. That is a supported configuration, not an error. The rules that keep 
 - The `/* @settings */` block at the head of `src/styles.css` is the Style Settings plugin's
   wire format, and `announceStyleSettings(this)` in `onload` is what makes it show up there:
   Style Settings reads the document's sheets when it loads, and ours arrive with us.
+- Inside that block, `%rows:<name>%` alone on a line is replaced by
+  `styles/<name>.settings.yml` from here — the rows a plugin shares with its kind
+  (`prose`, `sigil`), with the autocomplete (`pickers`) or with the other plugin that has a
+  side panel (`panels`). A plugin takes only the fragments it can honour: a panel row in a
+  plugin with no panel is a setting that does nothing. Its own rows follow a token and
+  continue whichever section that fragment ended on, so a fragment's last heading is the one
+  a plugin extends. Lines starting with `#` are the fragment's own notes and are dropped
+  rather than shipped.
+- Style Settings emits a variable only once the user stores a value for it, into
+  `body.css-settings-manager`. So an untouched row shows whatever the CSS says on its own,
+  and a stored one always outranks it.
+- **Colours are `variable-color` with no `default:`, and the variable is declared on `body`.**
+  Given no default, Style Settings shows the variable's live computed value, so the picker
+  opens on the colour actually in use — declare it as the theme's own (`var(--link-color)`,
+  `var(--text-warning)`) and both the picker and the rendering follow the theme until someone
+  picks otherwise. An undeclared variable reads as empty and the row does not render at all;
+  a suite test catches that. Do not use `variable-themed-color`: it hands its picker `c || ""`
+  for an untouched setting, so the swatch comes up blank.
+- **A theme colour must be resolved before Style Settings can draw it** — that is what
+  `trackThemeColors(plugin, prefix, colors)` is for, and every plugin calls it in `onload`. A
+  custom property keeps `calc()` unevaluated and drops an undefined `var()`, and Obsidian's
+  accent chain uses both, so `--link-color` reads back as
+  `hsl(calc(254 - 1), calc(80% * 1.01), …)` or as nothing. Style Settings' own check is only
+  `/^(#|rgb|hsl)/`, so the first passes it and then chroma throws on it and the swatch is
+  blank. The module settles each colour through a real `color` property, giving a plain
+  `rgb()`, and rewrites it on `css-change`. Its sheet selects plain `body`, one step below
+  `body.css-settings-manager`, so a chosen colour still wins. Anything chained off a resolved
+  colour in CSS (`--%p%-ambiguous-color: var(--%p%-link-color)`) comes out resolved too.
+- Everything that is not a colour keeps its resting value as the `var()` fallback in the rule,
+  not as the row's `default:` — the `default:` only fills the widget.
+- **A link's appearance is decided in `--pl-*` / `--sl-*`, and spent by one rule.** State goes
+  into private variables no theme competes for; one declaration block spends them. Add a
+  property to that block rather than giving it a rule of its own.
+- **Specificity is frozen at what each state already had.** Reading view builds a match as a
+  real `<a>`, so a theme's link rules land on ours too and sometimes win. That is not a bug to
+  fix: with nothing set the plugins must render exactly as they did before any of this was
+  configurable, and raising a selector to beat a theme changes the default look for everyone
+  using that theme. The applying rule therefore lists `:hover` with no declarations of its own,
+  purely so each state keeps the specificity its old rule had, and `text-decoration` is the one
+  property answered higher up — a theme's underline lands a second line under our own.
+  Check it rather than trust it: render the same markup under `git show HEAD:styles.css` and
+  under the build, and diff `getComputedStyle` for every state. A difference with no setting
+  applied is a regression.
+- A `--<prefix>-*` custom property means a Style Settings knob, and the suites enforce it in
+  both directions: a declared row nothing reads fails, and a property read but not offered
+  fails. A variable the plugin sets from code is named off the prefix instead (`--cl-lh`,
+  `--rl-player-fill`).
 - `.github/workflows/build.yml` is byte-identical in all four plugins and cannot move here —
   GitHub only reads workflows from the repository itself. Change one, copy to the others.
 - Tests use the zero-dependency harness at `testing/harness.js` (Node 16 has no

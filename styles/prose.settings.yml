@@ -1,0 +1,166 @@
+# Style Settings rows both prose linkers offer, spliced into each plugin's @settings block by
+# build.mjs where its %rows:prose% token sits. The prefix is substituted here too.
+#
+# Colour rows carry no default on purpose: without one, Style Settings shows the variable's
+# live computed value, which prose.css declares as the theme's own colour. A themed-color row
+# renders a blank swatch until touched, so it is not used here. See CONTRIBUTING.md.
+
+  -
+    id: %p%-links
+    title: Links
+    type: heading
+    level: 1
+  -
+    id: %p%-link-color
+    title: Highlight colour
+    description: Follows the theme's link colour until you pick one.
+    type: variable-color
+    format: hex
+    opacity: false
+  -
+    id: %p%-link-color-hover
+    title: Highlight colour on hover
+    description: Follows the theme's hover colour until you pick one.
+    type: variable-color
+    format: hex
+    opacity: false
+  -
+    id: %p%-underline-style
+    title: Underline style
+    type: variable-select
+    default: dotted
+    options:
+      - dotted
+      - solid
+      - dashed
+      - double
+      - none
+  -
+    id: %p%-underline-style-hover
+    title: Underline style on hover
+    type: variable-select
+    default: solid
+    options:
+      - solid
+      - dotted
+      - dashed
+      - double
+      - none
+  -
+    id: %p%-underline-width
+    title: Underline thickness
+    type: variable-number-slider
+    default: 1
+    min: 0
+    max: 4
+    step: 1
+    format: px
+  -
+    id: %p%-underline-offset
+    title: Underline offset
+    description: How far the underline sits below the text. Large values can reach the line under it.
+    type: variable-number-slider
+    default: 0
+    min: 0
+    max: 4
+    step: 1
+    format: px
+  -
+    id: %p%-link-background
+    title: Highlight background
+    description: Fill behind a highlighted word, like a marker pen. Transparent until you pick one; pair it with underline style "none" for the marker look.
+    type: variable-color
+    format: hex
+    opacity: true
+  -
+    id: %p%-link-background-hover
+    title: Highlight background on hover
+    description: Follows the resting background until you pick one.
+    type: variable-color
+    format: hex
+    opacity: true
+  -
+    id: %p%-link-radius
+    title: Background corner radius
+    type: variable-number-slider
+    default: 0
+    min: 0
+    max: 6
+    step: 1
+    format: px
+  -
+    id: %p%-link-weight
+    title: Font weight
+    type: variable-select
+    default: inherit
+    options:
+      - inherit
+      - '500'
+      - '600'
+      - '700'
+  -
+    id: %p%-link-italic
+    title: Italic
+    type: class-toggle
+    default: false
+  -
+    id: %p%-quiet
+    title: Show highlight only on hover
+    description: A highlighted word reads as plain text until the pointer is on it. The ambiguity symbol below stays visible, so collisions can still be spotted.
+    type: class-toggle
+    default: false
+  -
+    id: %p%-ambiguity
+    title: Ambiguous terms
+    type: heading
+    level: 1
+  -
+    id: %p%-ambiguous-underline-style
+    title: Ambiguous-term underline style
+    description: Underline for words with more than one possible target.
+    type: variable-select
+    default: double
+    options:
+      - double
+      - dotted
+      - dashed
+      - solid
+  -
+    id: %p%-ambiguous-underline-width
+    title: Ambiguous-term underline thickness
+    type: variable-number-slider
+    default: 3
+    min: 1
+    max: 5
+    step: 1
+    format: px
+  -
+    id: %p%-ambiguous-color
+    title: Ambiguous-term colour
+    description: Follows the highlight colour until you pick one. A different colour is the clearest way to spot a collision in a theme where the underline barely shows.
+    type: variable-color
+    format: hex
+    opacity: false
+  -
+    id: %p%-ambiguous-symbol
+    title: Ambiguous-term symbol
+    description: Any character or emoji, shown beside a word with more than one possible target. Leave empty for none.
+    type: variable-text
+    quotes: true
+    default: ''
+  -
+    id: %p%-mark-after
+    title: Put the symbol after the word
+    description: Off shows it before the word.
+    type: class-toggle
+    default: false
+  -
+    id: %p%-choices-width
+    title: Ambiguity list width
+    description: How wide the list of a word's possible meanings grows on hover.
+    type: variable-number-slider
+    default: 320
+    min: 200
+    max: 640
+    step: 20
+    format: px

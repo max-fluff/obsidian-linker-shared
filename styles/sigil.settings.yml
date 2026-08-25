@@ -1,0 +1,139 @@
+# Style Settings rows both sigil linkers offer, spliced into each plugin's @settings block by
+# build.mjs where its %rows:sigil% token sits. The prefix is substituted here too.
+#
+# Colour rows carry no default on purpose: without one, Style Settings shows the variable's
+# live computed value, which sigil.css declares as the theme's own colour. A themed-color row
+# renders a blank swatch until touched, so it is not used here. See CONTRIBUTING.md.
+#
+# "Previews and embeds" is last because a plugin's own rows follow the token, and both sigil
+# linkers extend that section — hover height among them, since the two disagree on its default.
+# The autocomplete and side-panel rows are their own fragments.
+
+  -
+    id: %p%-links
+    title: Links
+    type: heading
+    level: 1
+  -
+    id: %p%-link-color
+    title: Link colour
+    description: Follows the theme's colour for external links until you pick one.
+    type: variable-color
+    format: hex
+    opacity: false
+  -
+    id: %p%-underline
+    title: Underline
+    description: How a link the plugin inserted is underlined in Reading view.
+    type: variable-select
+    default: var(--link-external-decoration, underline)
+    options:
+      -
+        label: Theme default
+        value: var(--link-external-decoration, underline)
+      -
+        label: Underline
+        value: underline
+      -
+        label: Dotted
+        value: underline dotted
+      -
+        label: Dashed
+        value: underline dashed
+      -
+        label: Double
+        value: underline double
+      -
+        label: None
+        value: none
+  -
+    id: %p%-marks
+    title: Stale and broken links
+    type: heading
+    level: 1
+  -
+    id: %p%-stale-color
+    title: Stale-link underline colour
+    description: Links and embeds whose target has moved — the update commands can fix them. Follows the theme's warning colour until you pick one.
+    type: variable-color
+    format: hex
+    opacity: false
+  -
+    id: %p%-broken-color
+    title: Broken-link underline colour
+    description: Links and embeds whose pin no longer matches anything — renamed, removed, or rewritten. Follows the theme's error colour until you pick one.
+    type: variable-color
+    format: hex
+    opacity: false
+  -
+    id: %p%-mark-underline-style
+    title: Stale / broken underline style
+    type: variable-select
+    default: dotted
+    options:
+      - dotted
+      - dashed
+      - solid
+      - double
+  -
+    id: %p%-mark-underline-width
+    title: Stale / broken underline thickness
+    type: variable-number-slider
+    default: 1
+    min: 1
+    max: 4
+    step: 1
+    format: px
+  -
+    id: %p%-stale-symbol
+    title: Stale-link symbol
+    description: Any character or emoji, shown beside a link whose target has moved. Leave empty for none.
+    type: variable-text
+    quotes: true
+    default: ''
+  -
+    id: %p%-broken-symbol
+    title: Broken-link symbol
+    description: Any character or emoji, shown beside a link whose pin no longer matches. Leave empty for none.
+    type: variable-text
+    quotes: true
+    default: ''
+  -
+    id: %p%-mark-after
+    title: Put the symbol after the link
+    description: Off shows it before the link.
+    type: class-toggle
+    default: false
+  -
+    id: %p%-previews
+    title: Previews and embeds
+    type: heading
+    level: 1
+  -
+    id: %p%-embed-height
+    title: Inline embed height
+    description: How tall an inline embed grows before it scrolls, in percent of the window.
+    type: variable-number-slider
+    default: 60
+    min: 20
+    max: 100
+    step: 5
+  -
+    id: %p%-embed-tools-idle
+    title: Inline embed toolbar when idle
+    description: How visible the embed's toolbar is while the pointer is elsewhere. 0 keeps it out of the way until you hover the embed or focus it.
+    type: variable-number-slider
+    default: 1
+    min: 0
+    max: 1
+    step: 0.25
+  -
+    id: %p%-hover-width
+    title: Hover preview width
+    description: How wide a hover preview grows, capped at 90% of the window.
+    type: variable-number-slider
+    default: 720
+    min: 320
+    max: 1200
+    step: 20
+    format: px

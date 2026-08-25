@@ -64,7 +64,7 @@
 .%p%-hover {
   position: fixed;
   z-index: var(--layer-popover);
-  max-width: min(720px, 90vw);
+  max-width: min(var(--%p%-hover-width, 720px), 90vw);
   box-shadow: var(--shadow-s);
   user-select: text;
   -webkit-user-select: text;
@@ -164,21 +164,83 @@
   color: var(--text-error);
 }
 
+/* Colours are declared, not merely read with a fallback. Style Settings shows a colour row's
+   live computed value when the row carries no default, and an undeclared variable reads as
+   empty and renders a blank swatch. Its own rule is `body.css-settings-manager`, so a colour
+   chosen there still outranks this. See CONTRIBUTING.md. */
+body {
+  --%p%-link-color: var(--link-external-color, var(--link-color));
+  --%p%-stale-color: var(--text-warning);
+  --%p%-broken-color: var(--text-error);
+}
+
+/* Our own links, marked in both render modes whether or not they have drifted. The defaults
+   are the theme's own, so a link the plugin inserted goes on looking like any other link
+   until a value is chosen.
+   What it looks like is decided in --sl-* below, where no theme competes; only the rule that
+   spends them meets the theme's own link rules. See CONTRIBUTING.md. */
+.%p%-link,
+.cm-%p%-link {
+  --sl-ink: var(--%p%-link-color);
+  --sl-decoration: var(--%p%-underline, var(--link-external-decoration, underline));
+}
+
+/* An editor line carries no underline of its own, so nothing chosen means nothing drawn. */
+.cm-%p%-link {
+  --sl-decoration: var(--%p%-underline, none);
+}
+
+/* The one rule that meets the theme's own, and it sits no higher than the plugin's rules ever
+   have: a theme that paints its own links still wins, as it did before any of this was
+   configurable. */
+.%p%-link,
+.cm-%p%-link {
+  color: var(--sl-ink);
+  text-decoration: var(--sl-decoration);
+}
+
 /* Drifted line (stale) and renamed/removed symbol (broken), in both render modes.
    A border-bottom rather than text-decoration: wavy/offset underlines render
-   inconsistently across platforms, so a plain border is the reliable choice. */
+   inconsistently across platforms, so a plain border is the reliable choice — and it stacks
+   with the link's own underline above instead of fighting it. */
 .%p%-stale,
 .%p%-broken {
-  border-bottom-width: 1px;
+  border-bottom-width: var(--%p%-mark-underline-width, 1px);
   border-bottom-style: var(--%p%-mark-underline-style, dotted);
 }
 
 .%p%-stale {
-  border-bottom-color: var(--%p%-stale-color, var(--text-warning));
+  border-bottom-color: var(--%p%-stale-color);
 }
 
 .%p%-broken {
-  border-bottom-color: var(--%p%-broken-color, var(--text-error));
+  border-bottom-color: var(--%p%-broken-color);
+}
+
+/* The same underline is invisible in some themes, so the state can also be spelled out.
+   `none` rather than an empty string: with no symbol chosen there is no pseudo-element at
+   all. The symbol is not part of the link text, so it carries none of its underline. */
+.%p%-stale::before,
+body.%p%-mark-after .%p%-stale::after {
+  content: var(--%p%-stale-symbol, none);
+  color: var(--%p%-stale-color);
+  border-bottom: none;
+  font-size: 0.8em;
+  vertical-align: super;
+}
+
+.%p%-broken::before,
+body.%p%-mark-after .%p%-broken::after {
+  content: var(--%p%-broken-symbol, none);
+  color: var(--%p%-broken-color);
+  border-bottom: none;
+  font-size: 0.8em;
+  vertical-align: super;
+}
+
+body.%p%-mark-after .%p%-stale::before,
+body.%p%-mark-after .%p%-broken::before {
+  content: none;
 }
 
 /* Nested sub-rows — searchable kinds under a language, and chosen folders under a
@@ -237,7 +299,7 @@
 /* A guessed move (file matched by symbol or basename), not a plain line drift — tinted so
    it stands out for a closer look before applying. */
 .%p%-preview-moved .%p%-preview-move {
-  color: var(--%p%-stale-color, var(--text-warning));
+  color: var(--%p%-stale-color);
   white-space: normal;
 }
 
@@ -248,12 +310,12 @@
 }
 
 .%p%-preview-attention {
-  color: var(--%p%-broken-color, var(--text-error));
+  color: var(--%p%-broken-color);
 }
 
 .%p%-preview-broken {
   font-size: var(--font-ui-small);
-  color: var(--%p%-broken-color, var(--text-error));
+  color: var(--%p%-broken-color);
   padding: 2px 8px;
   overflow-wrap: anywhere;
 }

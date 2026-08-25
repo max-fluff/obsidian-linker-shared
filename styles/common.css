@@ -1,6 +1,12 @@
 /* Styles every linker plugin uses. The token below stands for the plugin class prefix;
    build.mjs substitutes it when it assembles styles.css. See CONTRIBUTING.md. */
 
+/* The second column of a suggestion row — the note in one pair, the path in the other. */
+body.%p%-hide-suggestion-path .%p%-path,
+body.%p%-hide-suggestion-path .%p%-suggestion-note {
+  display: none;
+}
+
 .%p%-preview-table {
   width: 100%;
   border-collapse: collapse;
