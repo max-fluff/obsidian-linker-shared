@@ -25,6 +25,37 @@
     format: hex
     opacity: false
   -
+    id: %p%-hue-mode
+    title: Follow the link colour
+    description: Paints a highlight from the link colour where the word sits — including one a cssclass gives a single note — with a hue of your own, so it keeps that relationship when the theme changes. Leave empty to use the colours above. Relative colours need a recent Obsidian installer; without them the colours above are used.
+    type: class-select
+    allowEmpty: true
+    options:
+      -
+        label: Shift its hue
+        value: %p%-hue-turned
+      -
+        label: Replace its hue
+        value: %p%-hue-fixed
+  -
+    id: %p%-hue-shift
+    title: Hue shift
+    description: How far round the colour wheel a highlight sits from the link colour, in degrees. Read by "Shift its hue".
+    type: variable-number-slider
+    default: 0
+    min: -180
+    max: 180
+    step: 5
+  -
+    id: %p%-hue
+    title: Hue
+    description: The hue a highlight takes, in degrees, keeping the lightness and saturation of the link colour beside it. Read by "Replace its hue".
+    type: variable-number-slider
+    default: 210
+    min: 0
+    max: 360
+    step: 5
+  -
     id: %p%-underline-style
     title: Underline style
     type: variable-select

@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const { describe, it, assert } = require('../harness');
 const { announceStyleSettings } = require('../../style-settings');
+const { PROSE_PICKS, SIGIL_PICKS } = require('../../theme-colors');
 
 // Style Settings' own patterns, copied from its parseCSSStyleSheet.
 const BLOCK = /\/\*!?\s*@settings[\r\n]+?([\s\S]+?)\*\//g;
@@ -106,6 +107,36 @@ describe('style settings', () => {
       if (row.type !== 'variable-color' || row.hasDefault) continue;
       assert.ok(rest.includes('--' + row.id + ':'), `${row.id} has no default, so Style Settings reads its computed value — but the CSS never declares --${row.id}`);
     }
+  });
+
+  // 1.6.0 shipped the set colour on the underline and the theme's own on the word: such a
+  // colour needs both a name in the JS map and a class in the CSS to reach the text at all.
+  it('answers the theme for every colour the reader may set', () => {
+    const body = blockOf(css);
+    const rest = css.split(body).join('');
+    const offered = rowsOf(body).map((r) => r.id);
+    for (const name of Object.keys(kind === 'prose' ? PROSE_PICKS : SIGIL_PICKS)) {
+      const spends = new RegExp(`body\\.${prefix}-${name}-picked[^{]*\\{[^}]*var\\(--${prefix}-${name}\\)`);
+      assert.ok(offered.includes(`${prefix}-${name}`), `${name} is tracked as pickable but no row offers it`);
+      assert.ok(spends.test(rest), `nothing in the CSS reads --${prefix}-${name} once it is picked`);
+    }
+    assert.ok(/color: var\(--[ps]l-ink\) !important/.test(rest), 'a picked colour is spent at a weight a theme can outrank');
+  });
+
+  // An installer without relative colours keeps a custom property it cannot resolve and drops
+  // it where it is spent, leaving the mark with the inherited text colour. The @supports block
+  // is what keeps the whole mode out of such a build instead.
+  it('keeps every relative colour inside an @supports block', () => {
+    // Comments go first, and a block is read from column one to column one: the word @supports
+    // inside a comment opened a region of its own, and everything after it read as guarded.
+    const rest = css.split(blockOf(css)).join('').replace(/\/\*[\s\S]*?\*\//g, '');
+    const guarded = (rest.match(/^@supports[\s\S]*?^\}/gm) || []).join('\n');
+    const reads = (text) => (text.match(/oklch\(from/g) || []).length;
+    assert.strictEqual(reads(rest), reads(guarded), 'a relative colour is read outside @supports');
+    // The rule that answers the theme has to go with the mode it answers for: left outside, it
+    // pinned the mark to the plain link colour on an installer where the mode does nothing.
+    const names = (text) => (text.match(new RegExp(prefix + '-hue-(turned|fixed)', 'g')) || []).length;
+    assert.strictEqual(names(rest), names(guarded), 'a hue-mode class is selected outside @supports');
   });
 
   it('gives every id to one row only', () => {

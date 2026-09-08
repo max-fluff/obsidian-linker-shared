@@ -105,3 +105,10 @@ body.%p%-hide-suggestion-path .%p%-suggestion-note {
   color: var(--text-normal);
   font-weight: var(--font-semibold);
 }
+
+/* The hidden span trackThemeColors settles a colour through, and the canvas it paints one the
+   swatch cannot take on. Off-flow so measuring never moves the page. */
+.%p%-probe {
+  position: absolute;
+  visibility: hidden;
+}

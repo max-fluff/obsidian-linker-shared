@@ -22,6 +22,37 @@
     format: hex
     opacity: false
   -
+    id: %p%-hue-mode
+    title: Follow the link colour
+    description: Paints a link the plugin inserted from the link colour where it sits — including one a cssclass gives a single note — with a hue of your own, so it keeps that relationship when the theme changes. Leave empty to use the colour above. Relative colours need a recent Obsidian installer; without them the colour above is used.
+    type: class-select
+    allowEmpty: true
+    options:
+      -
+        label: Shift its hue
+        value: %p%-hue-turned
+      -
+        label: Replace its hue
+        value: %p%-hue-fixed
+  -
+    id: %p%-hue-shift
+    title: Hue shift
+    description: How far round the colour wheel such a link sits from the link colour, in degrees. Read by "Shift its hue".
+    type: variable-number-slider
+    default: 0
+    min: -180
+    max: 180
+    step: 5
+  -
+    id: %p%-hue
+    title: Hue
+    description: The hue such a link takes, in degrees, keeping the lightness and saturation of the link colour beside it. Read by "Replace its hue".
+    type: variable-number-slider
+    default: 210
+    min: 0
+    max: 360
+    step: 5
+  -
     id: %p%-underline
     title: Underline
     description: How a link the plugin inserted is underlined in Reading view.

@@ -156,7 +156,7 @@ this repo. That is a supported configuration, not an error. The rules that keep 
 - Style Settings emits a variable only once the user stores a value for it, into
   `body.css-settings-manager`. So an untouched row shows whatever the CSS says on its own,
   and a stored one always outranks it.
-- **Colours are `variable-color` with no `default:`, and the variable is declared on `body`.**
+- **Colours are `variable-color` with no `default:`, and the variable is declared on `:root`.**
   Given no default, Style Settings shows the variable's live computed value, so the picker
   opens on the colour actually in use — declare it as the theme's own (`var(--link-color)`,
   `var(--text-warning)`) and both the picker and the rendering follow the theme until someone
@@ -170,21 +170,51 @@ this repo. That is a supported configuration, not an error. The rules that keep 
   `hsl(calc(254 - 1), calc(80% * 1.01), …)` or as nothing. Style Settings' own check is only
   `/^(#|rgb|hsl)/`, so the first passes it and then chroma throws on it and the swatch is
   blank. The module settles each colour through a real `color` property, giving a plain
-  `rgb()`, and rewrites it on `css-change`. Its sheet selects plain `body`, one step below
-  `body.css-settings-manager`, so a chosen colour still wins. Anything chained off a resolved
-  colour in CSS (`--%p%-ambiguous-color: var(--%p%-link-color)`) comes out resolved too.
+  `rgb()`, and rewrites it on `css-change`. Its sheet selects `:root`, one step of inheritance
+  below `body`, so a colour set there — by Style Settings or by a snippet — reaches the mark
+  first; on `body` the sheet and a snippet met as equals and the later stylesheet won, which
+  Obsidian reshuffles on every reload. Anything chained off a resolved colour in CSS
+  (`--%p%-ambiguous-color: var(--%p%-link-color)`) comes out resolved too.
 - Everything that is not a colour keeps its resting value as the `var()` fallback in the rule,
   not as the row's `default:` — the `default:` only fills the widget.
 - **A link's appearance is decided in `--pl-*` / `--sl-*`, and spent by one rule.** State goes
   into private variables no theme competes for; one declaration block spends them. Add a
   property to that block rather than giving it a rule of its own.
 - **Specificity is frozen at what each state already had.** Reading view builds a match as a
-  real `<a>`, so a theme's link rules land on ours too and sometimes win. That is not a bug to
-  fix: with nothing set the plugins must render exactly as they did before any of this was
+  real `<a>`, so a theme's link rules land on ours too and sometimes win. With nothing set that
+  is not a bug to fix: the plugins must render exactly as they did before any of this was
   configurable, and raising a selector to beat a theme changes the default look for everyone
   using that theme. The applying rule therefore lists `:hover` with no declarations of its own,
   purely so each state keeps the specificity its old rule had, and `text-decoration` is the one
   property answered higher up — a theme's underline lands a second line under our own.
+- **Every colour resolved here comes back in sRGB.** Style Settings' own check is
+  `/^(#|rgb|hsl)/`, and since Obsidian 1.13 a base colour settles as `oklch(...)`, so a theme
+  that maps `--link-color` onto one leaves the picker with nothing to draw. Nothing in CSS
+  converts a colour back — `rgb(from ...)` serialises as `color(srgb ...)`, which that check
+  rejects too — so `asSrgb` paints anything outside those three into a 1×1 canvas and reads the
+  pixel. A value already in sRGB is passed through rather than round-tripped, which would drift
+  it by a step and undo `capAlpha`'s own rounding.
+- **What the reader asked for outranks the theme; what they left alone does not.** A colour
+  the reader set no longer resolves to what the stylesheet declares for it, whether it was
+  stored by Style Settings or written in a snippet, and that is what `PROSE_PICKS` /
+  `SIGIL_PICKS` name: each entry is the expression the colour settles to while untouched, and
+  `trackThemeColors` puts `<prefix>-<name>-picked` on the body for the ones that no longer
+  match. Both sides settle through the same probe, so a stored hex and a theme's rgb() compare
+  as colours; a colour set to exactly the theme's own reads as untouched, and looks it. Those
+  classes, the hue modes and the class-toggle `<prefix>-quiet` are the only selectors that
+  answer a theme, with `color: var(--pl-ink) !important` — 1.6.0 shipped without them, and a
+  set colour reached the underline while the theme's own stayed on the word. A colour that no
+  theme competes for (a background, a stale or broken mark) belongs in neither map.
+- **A relative colour lives inside `@supports (color: oklch(from red l c h))`.** The hue modes
+  derive the ink from the theme's own link colour where the mark sits. An installer without
+  relative colours keeps such a custom property and drops it where it is spent, which would
+  leave the mark with the inherited text colour; the block keeps the mode out of that build
+  instead, and the picked or themed colour stands. A suite test fails on one outside a block.
+- **An unpicked colour is read where the mark sits.** `--pl-ink: var(--link-color)`, not the
+  body-level `--<prefix>-link-color`: a theme that recolours links per note sets `--link-color`
+  on the container, which is what a `cssclass` does, and the body-level copy freezes the mark
+  to the global colour. The body-level declaration exists for the picker, and the picked rules
+  are what spend it.
   Check it rather than trust it: render the same markup under `git show HEAD:styles.css` and
   under the build, and diff `getComputedStyle` for every state. A difference with no setting
   applied is a regression.

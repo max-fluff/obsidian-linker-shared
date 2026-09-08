@@ -2,23 +2,33 @@
 
 /* Colours are declared, not merely read with a fallback. Style Settings shows a colour row's
    live computed value when the row carries no default, and an undeclared variable reads as
-   empty and renders a blank swatch. Its own rule is `body.css-settings-manager`, so a colour
-   chosen there still outranks this. See CONTRIBUTING.md. */
-body {
+   empty and renders a blank swatch. On `:root` rather than `body`, so a value set on `body` —
+   Style Settings' own rule, or a snippet's — reaches the mark before this does.
+   See CONTRIBUTING.md. */
+:root {
   --%p%-link-color: var(--link-color);
   --%p%-link-color-hover: var(--link-color-hover);
   --%p%-link-background: rgba(0, 0, 0, 0);
+}
+
+/* A default that follows another of ours belongs where an override lands, not below it: a
+   custom property substitutes its var() on the element it is declared on, so from `:root`
+   these two would go on reading the theme's colour after one was set on `body`. */
+body {
   --%p%-link-background-hover: var(--%p%-link-background);
   --%p%-ambiguous-color: var(--%p%-link-color);
 }
 
 /* What a highlight looks like in each state is decided in --pl-* below, where no theme
    competes, and one rule spends them. That rule sits exactly where the plugin's has always
-   sat: a theme that paints its own links still wins, as it did before any of this was
-   configurable. See CONTRIBUTING.md. */
+   sat: with nothing set, a theme that paints its own links still wins, as it did before any
+   of this was configurable. See CONTRIBUTING.md.
+   The ink is read here rather than from the body-level variable, so a theme that recolours
+   links per note — `--link-color` on a container, which is what a cssclass sets — still
+   decides the colour of a mark inside it. */
 .%p%-link,
 .cm-%p%-link {
-  --pl-ink: var(--%p%-link-color);
+  --pl-ink: var(--link-color);
   --pl-bg: var(--%p%-link-background);
   --pl-width: var(--%p%-underline-width, 1px);
   --pl-style: var(--%p%-underline-style, dotted);
@@ -26,14 +36,13 @@ body {
 
 .%p%-ambiguous,
 .cm-%p%-ambiguous {
-  --pl-ink: var(--%p%-ambiguous-color);
   --pl-width: var(--%p%-ambiguous-underline-width, 3px);
   --pl-style: var(--%p%-ambiguous-underline-style, double);
 }
 
 .%p%-link:hover,
 .cm-%p%-link:hover {
-  --pl-ink: var(--%p%-link-color-hover);
+  --pl-ink: var(--link-color-hover);
   --pl-bg: var(--%p%-link-background-hover);
   --pl-style: var(--%p%-underline-style-hover, solid);
 }
@@ -44,6 +53,59 @@ body {
 .cm-%p%-ambiguous:hover {
   --pl-width: var(--%p%-ambiguous-underline-width, 3px);
   --pl-style: var(--%p%-ambiguous-underline-style, double);
+}
+
+/* A colour picked in Style Settings is the reader's own, and takes the ink over from the
+   theme's for as long as the pick stands. The classes come from trackPickedColors(). */
+body.%p%-link-color-picked .%p%-link:not(:hover),
+body.%p%-link-color-picked .cm-%p%-link:not(:hover) {
+  --pl-ink: var(--%p%-link-color);
+}
+
+body.%p%-link-color-hover-picked .%p%-link:hover,
+body.%p%-link-color-hover-picked .cm-%p%-link:hover {
+  --pl-ink: var(--%p%-link-color-hover);
+}
+
+/* Relative colours: an installer without them drops the block whole and the colour above
+   stands. The source is read where the mark sits, so the hue follows the link colour of the
+   note it is in. Below the picked rules, above the ambiguous one: a mode outranks a picked
+   colour, a picked ambiguous colour outranks the mode. */
+@supports (color: oklch(from red l c h)) {
+  body.%p%-hue-turned .%p%-link:not(:hover),
+  body.%p%-hue-turned .cm-%p%-link:not(:hover) {
+    --pl-ink: oklch(from var(--link-color) l c calc(h + var(--%p%-hue-shift, 0)));
+  }
+
+  body.%p%-hue-turned .%p%-link:hover,
+  body.%p%-hue-turned .cm-%p%-link:hover {
+    --pl-ink: oklch(from var(--link-color-hover) l c calc(h + var(--%p%-hue-shift, 0)));
+  }
+
+  body.%p%-hue-fixed .%p%-link:not(:hover),
+  body.%p%-hue-fixed .cm-%p%-link:not(:hover) {
+    --pl-ink: oklch(from var(--link-color) l c var(--%p%-hue, 210));
+  }
+
+  body.%p%-hue-fixed .%p%-link:hover,
+  body.%p%-hue-fixed .cm-%p%-link:hover {
+    --pl-ink: oklch(from var(--link-color-hover) l c var(--%p%-hue, 210));
+  }
+
+  /* Inside the block with the mode it answers for: on an installer that drops it, a mode is
+     not merely inert but must leave the theme's own colour where it was. */
+  body.%p%-hue-turned .%p%-link,
+  body.%p%-hue-turned .cm-%p%-link,
+  body.%p%-hue-fixed .%p%-link,
+  body.%p%-hue-fixed .cm-%p%-link {
+    color: var(--pl-ink) !important;
+  }
+}
+
+/* After the link's own, so a word that is both takes the ambiguous colour at rest. */
+body.%p%-ambiguous-color-picked .%p%-ambiguous:not(:hover),
+body.%p%-ambiguous-color-picked .cm-%p%-ambiguous:not(:hover) {
+  --pl-ink: var(--%p%-ambiguous-color);
 }
 
 /* currentColor, not `inherit`: a CSS-wide keyword in a custom property makes the property
@@ -74,6 +136,20 @@ body.%p%-quiet .cm-%p%-link:not(:hover) {
   font-weight: var(--%p%-link-weight, inherit);
   text-decoration: none;
   cursor: pointer;
+}
+
+/* The one place the theme is answered rather than left to win: a colour the reader picked and
+   a highlight they quieted. A derived hue answers from inside its own @supports block above.
+   See CONTRIBUTING.md. */
+body.%p%-link-color-picked .%p%-link,
+body.%p%-link-color-picked .cm-%p%-link,
+body.%p%-link-color-hover-picked .%p%-link:hover,
+body.%p%-link-color-hover-picked .cm-%p%-link:hover,
+body.%p%-ambiguous-color-picked .%p%-ambiguous,
+body.%p%-ambiguous-color-picked .cm-%p%-ambiguous,
+body.%p%-quiet .%p%-link:not(:hover),
+body.%p%-quiet .cm-%p%-link:not(:hover) {
+  color: var(--pl-ink) !important;
 }
 
 body.%p%-link-italic .%p%-link,
