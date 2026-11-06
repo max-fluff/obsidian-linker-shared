@@ -15,9 +15,12 @@
 
 // Each expression carries its own fallback: an undefined var() computes to the inherited text
 // colour, which would paint a hover colour black rather than leave it alone.
+const PROSE_LINK = 'var(--link-color, var(--text-accent))';
 const PROSE_COLORS = {
-  'link-color': 'var(--link-color, var(--text-accent))',
+  'link-color': PROSE_LINK,
   'link-color-hover': 'var(--link-color-hover, var(--text-accent-hover, var(--link-color, var(--text-accent))))',
+  // The theme's link colour, not the highlight's: a collision keeps its own colour.
+  'ambiguous-color': PROSE_LINK,
 };
 
 const SIGIL_COLORS = {
@@ -33,10 +36,22 @@ const SIGIL_COLORS = {
 const PROSE_PICKS = {
   'link-color': PROSE_COLORS['link-color'],
   'link-color-hover': PROSE_COLORS['link-color-hover'],
-  'ambiguous-color': 'var(--%p%-link-color)',
+  'ambiguous-color': PROSE_COLORS['ambiguous-color'],
 };
 
+// Whether a hue shift read off the page turns the colour at all. 0 — or a whole turn, or
+// nothing set — leaves the theme's own link rule to win, exactly as with no shift offered.
+function hueShifted(value) {
+  const deg = parseFloat(value);
+  return Number.isFinite(deg) && deg % 360 !== 0;
+}
+
 const SIGIL_PICKS = { 'link-color': SIGIL_COLORS['link-color'] };
+
+// The hue-shift sliders each kind offers. A slider `x` turns its rules on through the body
+// class `<prefix>-xed`, so `hue-shift` sets `<prefix>-hue-shifted`.
+const PROSE_SHIFTS = ['hue-shift', 'ambiguous-hue-shift'];
+const SIGIL_SHIFTS = ['hue-shift'];
 
 // Style Settings draws a swatch only for a value starting with #, rgb or hsl, and since
 // Obsidian 1.13 a base colour settles as `oklch(...)`. Nothing in CSS converts one back —
@@ -91,7 +106,7 @@ function pickedIn(prefix, picks, resolve) {
   });
 }
 
-function trackThemeColors(plugin, prefix, colors, picks) {
+function trackThemeColors(plugin, prefix, colors, picks, shifts = SIGIL_SHIFTS) {
   // No document under the test harness, and nothing to resolve against without one. The
   // stylesheet's own declarations stand in — they render correctly, they just read back
   // unresolved.
@@ -102,7 +117,12 @@ function trackThemeColors(plugin, prefix, colors, picks) {
 
   const names = picks ? Object.keys(picks) : [];
   const classOf = (name) => `${prefix}-${name}-picked`;
-  plugin.register(() => { for (const name of names) document.body.classList.remove(classOf(name)); });
+  // Style Settings writes a slider as a variable; only a class can turn a rule on.
+  const shiftedOf = (name) => `${prefix}-${name}ed`;
+  plugin.register(() => {
+    for (const name of names) document.body.classList.remove(classOf(name));
+    for (const name of shifts) document.body.classList.remove(shiftedOf(name));
+  });
 
   const paint = () => {
     const probe = document.body.createEl('span', { cls: `${prefix}-probe` });
@@ -127,6 +147,11 @@ function trackThemeColors(plugin, prefix, colors, picks) {
     // After the sheet, not before: what a colour resolves to now is what the reader will see.
     const set = new Set(names.length ? pickedIn(prefix, picks, resolve) : []);
     for (const name of names) document.body.classList.toggle(classOf(name), set.has(name));
+    const page = getComputedStyle(document.body);
+    for (const name of shifts) {
+      const deg = page.getPropertyValue(`--${prefix}-${name}`);
+      document.body.classList.toggle(shiftedOf(name), hueShifted(deg));
+    }
     probe.remove();
   };
 
@@ -142,8 +167,11 @@ module.exports = {
   capAlpha,
   asSrgb,
   pickedIn,
+  hueShifted,
   PROSE_COLORS,
   SIGIL_COLORS,
   PROSE_PICKS,
   SIGIL_PICKS,
+  PROSE_SHIFTS,
+  SIGIL_SHIFTS,
 };

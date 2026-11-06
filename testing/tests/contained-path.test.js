@@ -19,7 +19,10 @@ fs.writeFileSync(path.join(tmp, 'secret.txt'), 'secret\n');
 // A directory link inside the root that leads out of it. 'junction' needs no privilege on
 // Windows and is ignored elsewhere; if the OS still refuses, that one case is skipped.
 let linked = false;
-try { fs.symlinkSync(tmp, path.join(root, 'out'), 'junction'); linked = true; } catch { /* no links here */ }
+try {
+  fs.symlinkSync(tmp, path.join(root, 'out'), 'junction');
+  linked = true;
+} catch { /* no links here */ }
 
 describe('containedPath', () => {
   it('passes a file under the root', () => {
@@ -30,7 +33,9 @@ describe('containedPath', () => {
     assert.strictEqual(containedPath(root, '../secret.txt', false), null);
     assert.strictEqual(containedPath(root, 'src/../../secret.txt', false), null);
     // Backslashes separate only on Windows; elsewhere they are part of a file name.
-    if (path.sep === '\\') assert.strictEqual(containedPath(root, 'src\\..\\..\\secret.txt', false), null);
+    if (path.sep === '\\') {
+      assert.strictEqual(containedPath(root, 'src\\..\\..\\secret.txt', false), null);
+    }
   });
 
   it('refuses an absolute path', () => {
@@ -54,7 +59,8 @@ describe('containedPath', () => {
   });
 
   it('judges a missing file by its spelling', () => {
-    assert.strictEqual(containedPath(root, 'src/missing.ts', false), path.join(root, 'src', 'missing.ts'));
+    const missing = path.join(root, 'src', 'missing.ts');
+    assert.strictEqual(containedPath(root, 'src/missing.ts', false), missing);
     assert.strictEqual(containedPath(root, '../missing.ts', false), null);
   });
 });

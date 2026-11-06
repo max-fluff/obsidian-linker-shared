@@ -200,9 +200,10 @@
   text-decoration: var(--sl-decoration);
 }
 
-/* A colour picked in Style Settings is the reader's own: the class comes from
-   trackPickedColors(), and this and the modes below are the only places a theme is answered
-   rather than left to win. See CONTRIBUTING.md. */
+/* A colour picked in Style Settings overrides the theme's for as long as the pick stands; with
+   none, the theme's own colour is used. The class comes from trackThemeColors(), and this and
+   the shift below are the only places a theme is answered rather than left to win.
+   See CONTRIBUTING.md. */
 body.%p%-link-color-picked .%p%-link,
 body.%p%-link-color-picked .cm-%p%-link {
   --sl-ink: var(--%p%-link-color);
@@ -210,19 +211,20 @@ body.%p%-link-color-picked .cm-%p%-link {
 }
 
 /* Relative colours: an installer without them drops the block whole and the colour above
-   stands. The source is read where the link sits, so the hue follows the link colour of the
-   note it is in. After the picked rule, so a mode outranks a picked colour. */
+   stands. A hue shift other than 0 turns the link's colour — the one picked, else the theme's
+   where the link sits, so a cssclass recolouring a note is followed too — keeping its
+   lightness and saturation. The class comes from trackThemeColors(). */
 @supports (color: oklch(from red l c h)) {
-  body.%p%-hue-turned .%p%-link,
-  body.%p%-hue-turned .cm-%p%-link {
-    --sl-ink: oklch(from var(--link-external-color, var(--link-color)) l c calc(h + var(--%p%-hue-shift, 0)));
+  body.%p%-hue-shifted .%p%-link,
+  body.%p%-hue-shifted .cm-%p%-link {
+    --sl-ink: oklch(from var(--link-external-color, var(--link-color))
+      l c calc(h + var(--%p%-hue-shift, 0)));
     color: var(--sl-ink) !important;
   }
 
-  body.%p%-hue-fixed .%p%-link,
-  body.%p%-hue-fixed .cm-%p%-link {
-    --sl-ink: oklch(from var(--link-external-color, var(--link-color)) l c var(--%p%-hue, 210));
-    color: var(--sl-ink) !important;
+  body.%p%-hue-shifted.%p%-link-color-picked .%p%-link,
+  body.%p%-hue-shifted.%p%-link-color-picked .cm-%p%-link {
+    --sl-ink: oklch(from var(--%p%-link-color) l c calc(h + var(--%p%-hue-shift, 0)));
   }
 }
 

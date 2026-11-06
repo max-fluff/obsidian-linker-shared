@@ -5,7 +5,10 @@
 // browser's own resolution instead.
 
 const { describe, it, assert } = require('../harness');
-const { themeColorSheet, capAlpha, asSrgb, pickedIn, PROSE_COLORS, SIGIL_COLORS, PROSE_PICKS } = require('../../theme-colors');
+const {
+  themeColorSheet, capAlpha, asSrgb, pickedIn, hueShifted, trackThemeColors,
+  PROSE_COLORS, SIGIL_COLORS, PROSE_PICKS, PROSE_SHIFTS,
+} = require('../../theme-colors');
 
 // Stands in for the browser: every expression settles into a plain rgb(), which is what
 // getComputedStyle(el).color always returns.
@@ -74,14 +77,16 @@ describe('theme colours', () => {
       assert.deepStrictEqual(pickedIn('glossary', PROSE_PICKS, resolve), []);
     });
 
-    // The ambiguous colour follows the link colour, so setting that one alone must not read as
-    // two colours set — the ambiguous rule would then outrank the link's.
-    it('leaves a colour that only follows another where it is', () => {
-      const resolve = asResolved({
-        'var(--glossary-link-color)': 'rgb(255, 0, 136)',
-        'var(--glossary-ambiguous-color)': 'rgb(255, 0, 136)',
-      });
+    // The ambiguous colour starts at the theme's link colour, not the highlight's (#4 in
+    // glossary-linker): picking the highlight leaves it standing, picking it names it alone.
+    it('keeps the ambiguous colour on the theme when only the highlight is picked', () => {
+      const resolve = asResolved({ 'var(--glossary-link-color)': 'rgb(255, 0, 136)' });
       assert.deepStrictEqual(pickedIn('glossary', PROSE_PICKS, resolve), ['link-color']);
+    });
+
+    it('names the ambiguous colour once it is picked on its own', () => {
+      const resolve = asResolved({ 'var(--glossary-ambiguous-color)': 'rgb(0, 160, 80)' });
+      assert.deepStrictEqual(pickedIn('glossary', PROSE_PICKS, resolve), ['ambiguous-color']);
     });
 
     it('names nothing on a colour the browser could not settle', () => {
@@ -142,6 +147,73 @@ describe('theme colours', () => {
         ink: 'var(--link-color)',
       }, () => 'rgb(80, 120, 200)');
       assert.strictEqual(css, ':root { --code-linker-band: rgba(80, 120, 200, 0.35); --code-linker-ink: rgb(80, 120, 200); }');
+    });
+  });
+
+  // The slider is a variable and a rule needs a class: only a shift that turns the colour may
+  // answer the theme, so 0 leaves a vault exactly as it was with no shift offered at all.
+  describe('a hue shift', () => {
+    it('turns the colour at any angle short of a whole turn', () => {
+      for (const v of ['45', ' -90', '180', '5.5']) assert.strictEqual(hueShifted(v), true, v);
+    });
+
+    it('turns nothing at 0, a whole turn, or with nothing set', () => {
+      for (const v of ['0', ' 0', '-0', '360', '-360', '', 'none']) {
+        assert.strictEqual(hueShifted(v), false, v);
+      }
+    });
+
+    // The class is what the stylesheet keys on, so it has to follow the slider: on at load,
+    // and off again on the css-change a Style Settings write fires. Each slider has its own.
+    const track = (shifts, ...rest) => {
+      const values = Object.assign({}, shifts);
+      const classes = new Set();
+      let onCssChange = null;
+      const el = () => ({ style: {}, remove() {}, createEl: el });
+      const body = {
+        createEl: el,
+        classList: {
+          toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)),
+          remove: (c) => classes.delete(c),
+        },
+      };
+      // A page just real enough for one paint, in place only while it runs.
+      const onPage = (fn) => {
+        const saved = { document: global.document, getComputedStyle: global.getComputedStyle };
+        global.document = { head: { createEl: el }, body };
+        global.getComputedStyle = (node) => (node === body
+          ? { getPropertyValue: (name) => values[name] || '' }
+          : { color: 'rgb(1, 1, 1)' });
+        try { fn(); } finally { Object.assign(global, saved); }
+      };
+      onPage(() => trackThemeColors({
+        register() {},
+        registerEvent() {},
+        app: { workspace: { onLayoutReady: (fn) => fn(), on: (_e, fn) => { onCssChange = fn; } } },
+      }, 'glossary', PROSE_COLORS, PROSE_PICKS, ...rest));
+      const classesNow = () => [...classes].sort();
+      const set = (name, value) => {
+        values[name] = value;
+        onPage(onCssChange);
+        return classesNow();
+      };
+      return { classes: classesNow, set };
+    };
+
+    it('puts the class on the body while the slider turns, and takes it off at 0', () => {
+      const t = track({ '--glossary-hue-shift': '45' });
+      assert.deepStrictEqual(t.classes(), ['glossary-hue-shifted']);
+      assert.deepStrictEqual(t.set('--glossary-hue-shift', '0'), []);
+    });
+
+    it('gives the ambiguous slider a class of its own', () => {
+      const t = track({ '--glossary-ambiguous-hue-shift': '-30' }, PROSE_SHIFTS);
+      assert.deepStrictEqual(t.classes(), ['glossary-ambiguous-hue-shifted']);
+    });
+
+    it('reads only the hue shift unless told of more', () => {
+      const t = track({ '--glossary-ambiguous-hue-shift': '-30' });
+      assert.deepStrictEqual(t.classes(), []);
     });
   });
 });

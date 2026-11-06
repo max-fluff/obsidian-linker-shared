@@ -13,47 +13,25 @@
   -
     id: %p%-link-color
     title: Highlight colour
-    description: Follows the theme's link colour until you pick one.
+    description: Theme link colour until you pick one.
     type: variable-color
     format: hex
     opacity: false
   -
     id: %p%-link-color-hover
     title: Highlight colour on hover
-    description: Follows the theme's hover colour until you pick one.
+    description: Theme hover colour until you pick one.
     type: variable-color
     format: hex
     opacity: false
   -
-    id: %p%-hue-mode
-    title: Follow the link colour
-    description: Paints a highlight from the link colour where the word sits — including one a cssclass gives a single note — with a hue of your own, so it keeps that relationship when the theme changes. Leave empty to use the colours above. Relative colours need a recent Obsidian installer; without them the colours above are used.
-    type: class-select
-    allowEmpty: true
-    options:
-      -
-        label: Shift its hue
-        value: %p%-hue-turned
-      -
-        label: Replace its hue
-        value: %p%-hue-fixed
-  -
     id: %p%-hue-shift
     title: Hue shift
-    description: How far round the colour wheel a highlight sits from the link colour, in degrees. Read by "Shift its hue".
+    description: Shifts the hue of the colours above. 0 is off.
     type: variable-number-slider
     default: 0
     min: -180
     max: 180
-    step: 5
-  -
-    id: %p%-hue
-    title: Hue
-    description: The hue a highlight takes, in degrees, keeping the lightness and saturation of the link colour beside it. Read by "Replace its hue".
-    type: variable-number-slider
-    default: 210
-    min: 0
-    max: 360
     step: 5
   -
     id: %p%-underline-style
@@ -89,7 +67,7 @@
   -
     id: %p%-underline-offset
     title: Underline offset
-    description: How far the underline sits below the text. Large values can reach the line under it.
+    description: Gap between the text and the underline.
     type: variable-number-slider
     default: 0
     min: 0
@@ -99,14 +77,14 @@
   -
     id: %p%-link-background
     title: Highlight background
-    description: Fill behind a highlighted word, like a marker pen. Transparent until you pick one; pair it with underline style "none" for the marker look.
+    description: Fill behind the word. With underline style "none" it looks like a marker pen.
     type: variable-color
     format: hex
     opacity: true
   -
     id: %p%-link-background-hover
     title: Highlight background on hover
-    description: Follows the resting background until you pick one.
+    description: Same as the background until you pick one.
     type: variable-color
     format: hex
     opacity: true
@@ -137,7 +115,7 @@
   -
     id: %p%-quiet
     title: Show highlight only on hover
-    description: A highlighted word reads as plain text until the pointer is on it. The ambiguity symbol below stays visible, so collisions can still be spotted.
+    description: Show the highlight only while the pointer is on the word. The ambiguity symbol stays visible.
     type: class-toggle
     default: false
   -
@@ -148,7 +126,7 @@
   -
     id: %p%-ambiguous-underline-style
     title: Ambiguous-term underline style
-    description: Underline for words with more than one possible target.
+    description: Underline for words with more than one target.
     type: variable-select
     default: double
     options:
@@ -168,14 +146,23 @@
   -
     id: %p%-ambiguous-color
     title: Ambiguous-term colour
-    description: Follows the highlight colour until you pick one. A different colour is the clearest way to spot a collision in a theme where the underline barely shows.
+    description: Theme link colour until you pick one. The highlight colour does not apply here.
     type: variable-color
     format: hex
     opacity: false
   -
+    id: %p%-ambiguous-hue-shift
+    title: Ambiguous-term hue shift
+    description: Shifts the hue of the ambiguous-term colour. 0 is off.
+    type: variable-number-slider
+    default: 0
+    min: -180
+    max: 180
+    step: 5
+  -
     id: %p%-ambiguous-symbol
     title: Ambiguous-term symbol
-    description: Any character or emoji, shown beside a word with more than one possible target. Leave empty for none.
+    description: Character or emoji shown next to a word with more than one target. Empty for none.
     type: variable-text
     quotes: true
     default: ''
@@ -188,7 +175,7 @@
   -
     id: %p%-choices-width
     title: Ambiguity list width
-    description: How wide the list of a word's possible meanings grows on hover.
+    description: Width of the list of meanings shown on hover.
     type: variable-number-slider
     default: 320
     min: 200

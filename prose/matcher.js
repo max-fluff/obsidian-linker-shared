@@ -61,11 +61,25 @@ function isAcronymish(text) {
 // `cs` and `caseText` come off the index entry, so a plugin that sets neither is unaffected.
 const smartCaseFits = (plugin, c, surface) => !plugin.settings.smartCase || !c.cs || surface === c.caseText;
 
+// The words of a text as regex matches, so a caller has each one's position as well.
+const wordRuns = (text) => [...String(text).matchAll(/[\p{L}\p{Nd}]+/gu)];
+
 function createMatcher(config) {
   const { idOf, selfIdOf, fieldsOf } = config;
   const accepts = config.accepts || (() => true);
   // Smart case is the family rule; a plugin only passes its own if it wants a different one.
   const caseFits = config.caseFits || smartCaseFits;
+
+  // Every term id among scan results, the alternatives on a span included, `except` one.
+  const idsIn = (matches, except) => {
+    const out = new Set();
+    for (const m of matches) {
+      out.add(idOf(m));
+      if (m.alts) for (const a of m.alts) out.add(a);
+    }
+    if (except) out.delete(except);
+    return [...out];
+  };
 
   return {
     // Keys for a word: the union from every language that claims it (same-script
@@ -90,36 +104,51 @@ function createMatcher(config) {
     },
 
     tokenizeForm(form) {
-      const words = [...form.matchAll(/[\p{L}\p{Nd}]+/gu)].map((m) => m[0]);
-      return words.map((raw) => ({ raw, keys: this.keysFor(raw) }));
+      return wordRuns(form).map(([raw]) => ({ raw, keys: this.keysFor(raw) }));
     },
 
     // The fields every index entry carries for one written form, or null if the form holds
     // no word at all. Built here rather than by each plugin's index: a forgotten `cs` or
     // `caseText` disables smart case for that form silently, with nothing to notice.
+    //
+    // `seps` keeps what the form itself writes between its words, so "1234/1234", "TCP/IP"
+    // or "Node.js" match where the text spells them the same way. Spaces and hyphens are
+    // taken between any two words regardless; a separator only the form has is not loosened
+    // into matching any other punctuation.
     formEntry(form) {
-      const words = this.tokenizeForm(form);
-      if (!words.length) return null;
-      return { words, wordCount: words.length, cs: isAcronymish(form), caseText: form };
+      const runs = wordRuns(form);
+      if (!runs.length) return null;
+      const words = runs.map((m) => ({ raw: m[0], keys: this.keysFor(m[0]) }));
+      const seps = runs.slice(1)
+        .map((m, k) => form.slice(runs[k].index + runs[k][0].length, m.index));
+      return { words, wordCount: words.length, seps, cs: isAcronymish(form), caseText: form };
     },
 
     // Every term id whose form matches `text`, `except` one. Runs the same scan as the
     // highlighter, so collisions agree with what actually gets linked.
     termsMatchingText(text, except) {
-      const out = new Set();
-      for (const m of this.findMatches(text, null)) {
-        out.add(idOf(m));
-        if (m.alts) for (const a of m.alts) out.add(a);
-      }
-      if (except) out.delete(except);
-      return [...out];
+      return idsIn(this.findMatches(text, null), except);
+    },
+
+    // Every term id whose form covers all of `text`, `except` one — whether `text` as a term
+    // or alias of its own would collide. A form matching only part of it does not: the scan
+    // takes the longest form at each spot, so a new "natural language" wins over an existing
+    // "language" wherever both fit, and is no duplicate of it.
+    termsMatchingWhole(text, except) {
+      const runs = wordRuns(text);
+      if (!runs.length) return [];
+      const last = runs[runs.length - 1];
+      const from = runs[0].index;
+      const to = last.index + last[0].length;
+      const whole = this.findMatches(text, null).filter((m) => m.start === from && m.end === to);
+      return idsIn(whole, except);
     },
 
     // `selfId` identifies the note being scanned when it is itself a term source; its own
     // entries are skipped so a note doesn't link to itself.
     findMatches(text, selfId, opts = {}) {
       const protect = opts.protect ? this.computeProtected(text) : null;
-      const tokens = [...text.matchAll(/[\p{L}\p{Nd}]+/gu)]
+      const tokens = wordRuns(text)
         .map((m) => {
           const raw = m[0];
           return { raw, start: m.index, end: m.index + raw.length, keys: this.keysFor(raw) };
@@ -137,8 +166,9 @@ function createMatcher(config) {
           for (const c of bucket) { if (!seen.has(c)) { seen.add(c); cands.push(c); } }
         }
 
-        // Does candidate c fit at token i? Multi-word terms must be contiguous with
-        // only spaces/hyphens between, and every word's keys must overlap.
+        // Does candidate c fit at token i? Multi-word terms must be contiguous with only
+        // spaces/hyphens between — or exactly what the form itself has there — and every
+        // word's keys must overlap.
         const fits = (c) => {
           const wc = c.wordCount;
           if (i + wc > tokens.length) return false;
@@ -147,7 +177,7 @@ function createMatcher(config) {
             const w = c.words[k];
             if (k > 0) {
               const between = text.slice(tokens[i + k - 1].end, t2.start);
-              if (/[^\s-]/.test(between)) return false;
+              if (/[^\s-]/.test(between) && between !== (c.seps && c.seps[k - 1])) return false;
             }
             const t2keys = k === 0 ? t2.keys : this.keysFor(t2.raw);
             if (!t2keys.some((kk) => w.keys.includes(kk))) return false;

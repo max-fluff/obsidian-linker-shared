@@ -173,8 +173,8 @@ this repo. That is a supported configuration, not an error. The rules that keep 
   `rgb()`, and rewrites it on `css-change`. Its sheet selects `:root`, one step of inheritance
   below `body`, so a colour set there — by Style Settings or by a snippet — reaches the mark
   first; on `body` the sheet and a snippet met as equals and the later stylesheet won, which
-  Obsidian reshuffles on every reload. Anything chained off a resolved colour in CSS
-  (`--%p%-ambiguous-color: var(--%p%-link-color)`) comes out resolved too.
+  Obsidian reshuffles on every reload. Anything chained off a resolved colour in CSS comes out
+  resolved too.
 - Everything that is not a colour keeps its resting value as the `var()` fallback in the rule,
   not as the row's `default:` — the `default:` only fills the widget.
 - **A link's appearance is decided in `--pl-*` / `--sl-*`, and spent by one rule.** State goes
@@ -201,15 +201,22 @@ this repo. That is a supported configuration, not an error. The rules that keep 
   `trackThemeColors` puts `<prefix>-<name>-picked` on the body for the ones that no longer
   match. Both sides settle through the same probe, so a stored hex and a theme's rgb() compare
   as colours; a colour set to exactly the theme's own reads as untouched, and looks it. Those
-  classes, the hue modes and the class-toggle `<prefix>-quiet` are the only selectors that
+  classes, the hue shift and the class-toggle `<prefix>-quiet` are the only selectors that
   answer a theme, with `color: var(--pl-ink) !important` — 1.6.0 shipped without them, and a
   set colour reached the underline while the theme's own stayed on the word. A colour that no
   theme competes for (a background, a stale or broken mark) belongs in neither map.
-- **A relative colour lives inside `@supports (color: oklch(from red l c h))`.** The hue modes
-  derive the ink from the theme's own link colour where the mark sits. An installer without
-  relative colours keeps such a custom property and drops it where it is spent, which would
-  leave the mark with the inherited text colour; the block keeps the mode out of that build
-  instead, and the picked or themed colour stands. A suite test fails on one outside a block.
+- **A relative colour lives inside `@supports (color: oklch(from red l c h))`.** The hue shift
+  turns the colour that stands — the picked one, else the theme's own link colour where the
+  mark sits. A slider is a variable and only a class can switch a rule on, so
+  `trackThemeColors` puts `<prefix>-hue-shifted` on the body while `--<prefix>-hue-shift` turns
+  the colour at all; at 0 nothing answers the theme. An installer without relative colours
+  keeps such a custom property and drops it where it is spent, which would leave the mark with
+  the inherited text colour; the block keeps the shift out of that build instead, and the
+  picked or themed colour stands. A suite test fails on one outside a block.
+- **An ambiguous word keeps a colour of its own.** The highlight colour and its shift skip
+  `.<prefix>-ambiguous`: at rest such a word takes the colour picked for it, else the theme's
+  link colour, so a collision stays told apart whatever the highlight does. A suite test fails
+  on a highlight-colour rule that reaches one.
 - **An unpicked colour is read where the mark sits.** `--pl-ink: var(--link-color)`, not the
   body-level `--<prefix>-link-color`: a theme that recolours links per note sets `--link-color`
   on the container, which is what a `cssclass` does, and the body-level copy freezes the mark

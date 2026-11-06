@@ -133,10 +133,57 @@ describe('style settings', () => {
     const guarded = (rest.match(/^@supports[\s\S]*?^\}/gm) || []).join('\n');
     const reads = (text) => (text.match(/oklch\(from/g) || []).length;
     assert.strictEqual(reads(rest), reads(guarded), 'a relative colour is read outside @supports');
-    // The rule that answers the theme has to go with the mode it answers for: left outside, it
-    // pinned the mark to the plain link colour on an installer where the mode does nothing.
-    const names = (text) => (text.match(new RegExp(prefix + '-hue-(turned|fixed)', 'g')) || []).length;
-    assert.strictEqual(names(rest), names(guarded), 'a hue-mode class is selected outside @supports');
+    // The rule that answers the theme has to go with the shift it answers for: left outside, it
+    // pinned the mark to the plain link colour on an installer where the shift does nothing.
+    const shiftClass = new RegExp(prefix + '-(ambiguous-)?hue-shifted', 'g');
+    const names = (text) => (text.match(shiftClass) || []).length;
+    const outside = 'the hue-shift class is selected outside @supports';
+    assert.strictEqual(names(rest), names(guarded), outside);
+  });
+
+  // A picked colour overrides the theme's, and a hue shift turns whichever stands — the picked
+  // one, else the theme's (glossary-linker #4).
+  it('turns the picked colour once one is picked, and the theme colour otherwise', () => {
+    const rest = css.split(blockOf(css)).join('');
+    // A rule on the slider's class that turns `source` by that same slider's value.
+    const turns = (slider, cls, source) => new RegExp(`body\\.${prefix}-${slider}ed${cls}[^{]*`
+      + `\\{[^}]*oklch\\(from var\\(--${source}[,)][^}]*var\\(--${prefix}-${slider},`);
+    // [slider, the theme colour it turns, the pick that takes that colour's place]
+    const cases = kind === 'prose'
+      ? [
+        ['hue-shift', 'link-color', 'link-color'],
+        ['hue-shift', 'link-color-hover', 'link-color-hover'],
+        ['ambiguous-hue-shift', 'link-color', 'ambiguous-color'],
+        ['ambiguous-hue-shift', 'link-color-hover', 'link-color-hover'],
+      ]
+      : [['hue-shift', 'link-external-color', 'link-color']];
+    for (const [slider, theme, pick] of cases) {
+      const picked = `\\.${prefix}-${pick}-picked `;
+      const own = `${prefix}-${pick}`;
+      assert.ok(turns(slider, ' ', theme).test(rest), `${slider} misses the theme's ${theme}`);
+      assert.ok(turns(slider, picked, own).test(rest), `${slider} misses a picked ${pick}`);
+    }
+  });
+
+  // An ambiguous word keeps the theme's link colour, or one picked for it: the highlight colour
+  // and its shift are the ordinary highlight's alone (glossary-linker #4).
+  it('keeps the highlight colour and its shift off an ambiguous word', () => {
+    if (kind !== 'prose') return;
+    const rest = css.split(blockOf(css)).join('').replace(/\/\*[\s\S]*?\*\//g, '');
+    const selectors = (rest.match(/[^{};]+(?=\{)/g) || [])
+      .flatMap((s) => s.split(','))
+      .map((s) => s.trim());
+    const reaching = new RegExp(`${prefix}-(link-color-picked|hue-shifted)\\b`);
+    const spared = new RegExp(`:not\\(\\.(cm-)?${prefix}-ambiguous\\)`);
+    const leaks = selectors.filter((s) => reaching.test(s) && !spared.test(s));
+    assert.ok(selectors.some((s) => reaching.test(s)), 'found no highlight-colour rule to check');
+    assert.deepStrictEqual(leaks, [], 'these reach an ambiguous word');
+    // And the other way round: the ambiguous shift is for ambiguous words only.
+    const own = new RegExp(`${prefix}-ambiguous-hue-shifted\\b`);
+    const target = new RegExp(` \\.(cm-)?${prefix}-ambiguous\\b`);
+    const strays = selectors.filter((s) => own.test(s) && !target.test(s));
+    assert.ok(selectors.some((s) => own.test(s)), 'found no ambiguous-shift rule to check');
+    assert.deepStrictEqual(strays, [], 'these turn an ordinary word by the ambiguous shift');
   });
 
   it('gives every id to one row only', () => {

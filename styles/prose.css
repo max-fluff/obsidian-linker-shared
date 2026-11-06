@@ -8,15 +8,15 @@
 :root {
   --%p%-link-color: var(--link-color);
   --%p%-link-color-hover: var(--link-color-hover);
+  --%p%-ambiguous-color: var(--link-color);
   --%p%-link-background: rgba(0, 0, 0, 0);
 }
 
 /* A default that follows another of ours belongs where an override lands, not below it: a
    custom property substitutes its var() on the element it is declared on, so from `:root`
-   these two would go on reading the theme's colour after one was set on `body`. */
+   this would go on reading the theme's colour after one was set on `body`. */
 body {
   --%p%-link-background-hover: var(--%p%-link-background);
-  --%p%-ambiguous-color: var(--%p%-link-color);
 }
 
 /* What a highlight looks like in each state is decided in --pl-* below, where no theme
@@ -55,10 +55,12 @@ body {
   --pl-style: var(--%p%-ambiguous-underline-style, double);
 }
 
-/* A colour picked in Style Settings is the reader's own, and takes the ink over from the
-   theme's for as long as the pick stands. The classes come from trackPickedColors(). */
-body.%p%-link-color-picked .%p%-link:not(:hover),
-body.%p%-link-color-picked .cm-%p%-link:not(:hover) {
+/* A colour picked in Style Settings overrides the theme's for as long as the pick stands; with
+   none, the theme's own colour is used. The classes come from trackThemeColors().
+   The highlight colour is the ordinary highlight's alone: an ambiguous word at rest keeps the
+   theme's link colour, or the one picked for it, so a collision stays told apart. */
+body.%p%-link-color-picked .%p%-link:not(.%p%-ambiguous):not(:hover),
+body.%p%-link-color-picked .cm-%p%-link:not(.cm-%p%-ambiguous):not(:hover) {
   --pl-ink: var(--%p%-link-color);
 }
 
@@ -67,45 +69,69 @@ body.%p%-link-color-hover-picked .cm-%p%-link:hover {
   --pl-ink: var(--%p%-link-color-hover);
 }
 
-/* Relative colours: an installer without them drops the block whole and the colour above
-   stands. The source is read where the mark sits, so the hue follows the link colour of the
-   note it is in. Below the picked rules, above the ambiguous one: a mode outranks a picked
-   colour, a picked ambiguous colour outranks the mode. */
-@supports (color: oklch(from red l c h)) {
-  body.%p%-hue-turned .%p%-link:not(:hover),
-  body.%p%-hue-turned .cm-%p%-link:not(:hover) {
-    --pl-ink: oklch(from var(--link-color) l c calc(h + var(--%p%-hue-shift, 0)));
-  }
-
-  body.%p%-hue-turned .%p%-link:hover,
-  body.%p%-hue-turned .cm-%p%-link:hover {
-    --pl-ink: oklch(from var(--link-color-hover) l c calc(h + var(--%p%-hue-shift, 0)));
-  }
-
-  body.%p%-hue-fixed .%p%-link:not(:hover),
-  body.%p%-hue-fixed .cm-%p%-link:not(:hover) {
-    --pl-ink: oklch(from var(--link-color) l c var(--%p%-hue, 210));
-  }
-
-  body.%p%-hue-fixed .%p%-link:hover,
-  body.%p%-hue-fixed .cm-%p%-link:hover {
-    --pl-ink: oklch(from var(--link-color-hover) l c var(--%p%-hue, 210));
-  }
-
-  /* Inside the block with the mode it answers for: on an installer that drops it, a mode is
-     not merely inert but must leave the theme's own colour where it was. */
-  body.%p%-hue-turned .%p%-link,
-  body.%p%-hue-turned .cm-%p%-link,
-  body.%p%-hue-fixed .%p%-link,
-  body.%p%-hue-fixed .cm-%p%-link {
-    color: var(--pl-ink) !important;
-  }
-}
-
-/* After the link's own, so a word that is both takes the ambiguous colour at rest. */
 body.%p%-ambiguous-color-picked .%p%-ambiguous:not(:hover),
 body.%p%-ambiguous-color-picked .cm-%p%-ambiguous:not(:hover) {
   --pl-ink: var(--%p%-ambiguous-color);
+}
+
+/* Relative colours: an installer without them drops the block whole and the colour above
+   stands. A hue shift other than 0 turns the ordinary highlight's colour — the one picked,
+   else the theme's link colour where the word sits, so a cssclass recolouring a note is
+   followed too — keeping its lightness and saturation. The class comes from
+   trackThemeColors(). An ambiguous word is not turned: its own colour is what marks it. */
+@supports (color: oklch(from red l c h)) {
+  body.%p%-hue-shifted .%p%-link:not(.%p%-ambiguous):not(:hover),
+  body.%p%-hue-shifted .cm-%p%-link:not(.cm-%p%-ambiguous):not(:hover) {
+    --pl-ink: oklch(from var(--link-color) l c calc(h + var(--%p%-hue-shift, 0)));
+  }
+
+  body.%p%-hue-shifted.%p%-link-color-picked .%p%-link:not(.%p%-ambiguous):not(:hover),
+  body.%p%-hue-shifted.%p%-link-color-picked .cm-%p%-link:not(.cm-%p%-ambiguous):not(:hover) {
+    --pl-ink: oklch(from var(--%p%-link-color) l c calc(h + var(--%p%-hue-shift, 0)));
+  }
+
+  body.%p%-hue-shifted .%p%-link:not(.%p%-ambiguous):hover,
+  body.%p%-hue-shifted .cm-%p%-link:not(.cm-%p%-ambiguous):hover {
+    --pl-ink: oklch(from var(--link-color-hover) l c calc(h + var(--%p%-hue-shift, 0)));
+  }
+
+  body.%p%-hue-shifted.%p%-link-color-hover-picked .%p%-link:not(.%p%-ambiguous):hover,
+  body.%p%-hue-shifted.%p%-link-color-hover-picked .cm-%p%-link:not(.cm-%p%-ambiguous):hover {
+    --pl-ink: oklch(from var(--%p%-link-color-hover) l c calc(h + var(--%p%-hue-shift, 0)));
+  }
+
+  /* An ambiguous word has a shift of its own, turning its own colour the same way: the one
+     picked for it, else the theme's link colour, and the hover colour on hover. */
+  body.%p%-ambiguous-hue-shifted .%p%-ambiguous:not(:hover),
+  body.%p%-ambiguous-hue-shifted .cm-%p%-ambiguous:not(:hover) {
+    --pl-ink: oklch(from var(--link-color) l c calc(h + var(--%p%-ambiguous-hue-shift, 0)));
+  }
+
+  body.%p%-ambiguous-hue-shifted.%p%-ambiguous-color-picked .%p%-ambiguous:not(:hover),
+  body.%p%-ambiguous-hue-shifted.%p%-ambiguous-color-picked .cm-%p%-ambiguous:not(:hover) {
+    --pl-ink: oklch(from var(--%p%-ambiguous-color) l c
+      calc(h + var(--%p%-ambiguous-hue-shift, 0)));
+  }
+
+  body.%p%-ambiguous-hue-shifted .%p%-ambiguous:hover,
+  body.%p%-ambiguous-hue-shifted .cm-%p%-ambiguous:hover {
+    --pl-ink: oklch(from var(--link-color-hover) l c calc(h + var(--%p%-ambiguous-hue-shift, 0)));
+  }
+
+  body.%p%-ambiguous-hue-shifted.%p%-link-color-hover-picked .%p%-ambiguous:hover,
+  body.%p%-ambiguous-hue-shifted.%p%-link-color-hover-picked .cm-%p%-ambiguous:hover {
+    --pl-ink: oklch(from var(--%p%-link-color-hover) l c
+      calc(h + var(--%p%-ambiguous-hue-shift, 0)));
+  }
+
+  /* Inside the block with the shift it answers for: on an installer that drops it, a shift
+     is not merely inert but must leave the theme's own colour where it was. */
+  body.%p%-hue-shifted .%p%-link:not(.%p%-ambiguous),
+  body.%p%-hue-shifted .cm-%p%-link:not(.cm-%p%-ambiguous),
+  body.%p%-ambiguous-hue-shifted .%p%-ambiguous,
+  body.%p%-ambiguous-hue-shifted .cm-%p%-ambiguous {
+    color: var(--pl-ink) !important;
+  }
 }
 
 /* currentColor, not `inherit`: a CSS-wide keyword in a custom property makes the property
@@ -141,8 +167,8 @@ body.%p%-quiet .cm-%p%-link:not(:hover) {
 /* The one place the theme is answered rather than left to win: a colour the reader picked and
    a highlight they quieted. A derived hue answers from inside its own @supports block above.
    See CONTRIBUTING.md. */
-body.%p%-link-color-picked .%p%-link,
-body.%p%-link-color-picked .cm-%p%-link,
+body.%p%-link-color-picked .%p%-link:not(.%p%-ambiguous),
+body.%p%-link-color-picked .cm-%p%-link:not(.cm-%p%-ambiguous),
 body.%p%-link-color-hover-picked .%p%-link:hover,
 body.%p%-link-color-hover-picked .cm-%p%-link:hover,
 body.%p%-ambiguous-color-picked .%p%-ambiguous,

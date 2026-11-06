@@ -9,7 +9,7 @@
   -
     id: %p%-panel-density
     title: Row density
-    description: How tightly the panel's rows are set. Leave empty for the normal spacing.
+    description: Row spacing in the panel. Empty for normal.
     type: class-select
     allowEmpty: true
     options:
@@ -22,7 +22,7 @@
   -
     id: %p%-panel-font-size
     title: Text size
-    description: Base size for the panel's rows. Labels that are deliberately secondary keep their own smaller size.
+    description: Text size of the panel rows.
     type: variable-select
     default: var(--font-ui-small)
     options:

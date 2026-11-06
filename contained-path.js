@@ -35,7 +35,8 @@ function containedPath(root, rel, indexed) {
 // answers with an absolute path across drives, so both are caught without string games.
 function isInside(base, abs) {
   const back = nodePath.relative(base, abs);
-  return back !== '' && !nodePath.isAbsolute(back) && back !== '..' && !back.startsWith('..' + nodePath.sep);
+  if (back === '' || nodePath.isAbsolute(back)) return false;
+  return back !== '..' && !back.startsWith('..' + nodePath.sep);
 }
 
 module.exports = { containedPath, isInside };

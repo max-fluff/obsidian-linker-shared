@@ -112,3 +112,11 @@ body.%p%-hide-suggestion-path .%p%-suggestion-note {
   position: absolute;
   visibility: hidden;
 }
+
+/* Our sliders in the Style Settings panel. Obsidian sizes the value label to its text, so
+   moving from 5 to -5 or 180 widened it and reflowed the description beside it. Four digits
+   hold every value a row of ours offers (-180, 1200, 0.25). */
+.setting-item[data-id^="%p%-"] .slider-value {
+  min-width: 4ch;
+  text-align: end;
+}

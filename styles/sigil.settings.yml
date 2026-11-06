@@ -17,45 +17,23 @@
   -
     id: %p%-link-color
     title: Link colour
-    description: Follows the theme's colour for external links until you pick one.
+    description: Theme colour for external links until you pick one.
     type: variable-color
     format: hex
     opacity: false
   -
-    id: %p%-hue-mode
-    title: Follow the link colour
-    description: Paints a link the plugin inserted from the link colour where it sits — including one a cssclass gives a single note — with a hue of your own, so it keeps that relationship when the theme changes. Leave empty to use the colour above. Relative colours need a recent Obsidian installer; without them the colour above is used.
-    type: class-select
-    allowEmpty: true
-    options:
-      -
-        label: Shift its hue
-        value: %p%-hue-turned
-      -
-        label: Replace its hue
-        value: %p%-hue-fixed
-  -
     id: %p%-hue-shift
     title: Hue shift
-    description: How far round the colour wheel such a link sits from the link colour, in degrees. Read by "Shift its hue".
+    description: Shifts the hue of the link colour. 0 is off.
     type: variable-number-slider
     default: 0
     min: -180
     max: 180
     step: 5
   -
-    id: %p%-hue
-    title: Hue
-    description: The hue such a link takes, in degrees, keeping the lightness and saturation of the link colour beside it. Read by "Replace its hue".
-    type: variable-number-slider
-    default: 210
-    min: 0
-    max: 360
-    step: 5
-  -
     id: %p%-underline
     title: Underline
-    description: How a link the plugin inserted is underlined in Reading view.
+    description: Underline of inserted links in Reading view.
     type: variable-select
     default: var(--link-external-decoration, underline)
     options:
@@ -85,14 +63,14 @@
   -
     id: %p%-stale-color
     title: Stale-link underline colour
-    description: Links and embeds whose target has moved — the update commands can fix them. Follows the theme's warning colour until you pick one.
+    description: Links and embeds whose target moved. Theme warning colour until you pick one.
     type: variable-color
     format: hex
     opacity: false
   -
     id: %p%-broken-color
     title: Broken-link underline colour
-    description: Links and embeds whose pin no longer matches anything — renamed, removed, or rewritten. Follows the theme's error colour until you pick one.
+    description: Links and embeds whose target is gone. Theme error colour until you pick one.
     type: variable-color
     format: hex
     opacity: false
@@ -118,14 +96,14 @@
   -
     id: %p%-stale-symbol
     title: Stale-link symbol
-    description: Any character or emoji, shown beside a link whose target has moved. Leave empty for none.
+    description: Character or emoji shown next to a link whose target moved. Empty for none.
     type: variable-text
     quotes: true
     default: ''
   -
     id: %p%-broken-symbol
     title: Broken-link symbol
-    description: Any character or emoji, shown beside a link whose pin no longer matches. Leave empty for none.
+    description: Character or emoji shown next to a link whose target is gone. Empty for none.
     type: variable-text
     quotes: true
     default: ''
@@ -143,7 +121,7 @@
   -
     id: %p%-embed-height
     title: Inline embed height
-    description: How tall an inline embed grows before it scrolls, in percent of the window.
+    description: Maximum height of an inline embed, in percent of the window.
     type: variable-number-slider
     default: 60
     min: 20
@@ -152,7 +130,7 @@
   -
     id: %p%-embed-tools-idle
     title: Inline embed toolbar when idle
-    description: How visible the embed's toolbar is while the pointer is elsewhere. 0 keeps it out of the way until you hover the embed or focus it.
+    description: Toolbar visibility while the pointer is elsewhere. 0 hides it until hover or focus.
     type: variable-number-slider
     default: 1
     min: 0
@@ -161,7 +139,7 @@
   -
     id: %p%-hover-width
     title: Hover preview width
-    description: How wide a hover preview grows, capped at 90% of the window.
+    description: Maximum width of a hover preview. Never more than 90% of the window.
     type: variable-number-slider
     default: 720
     min: 320

@@ -8,6 +8,6 @@
   -
     id: %p%-hide-suggestion-path
     title: Hide the second column
-    description: Drop the note or path shown beside a suggestion, leaving the name alone.
+    description: Hide the note or path shown next to a suggestion.
     type: class-toggle
     default: false
