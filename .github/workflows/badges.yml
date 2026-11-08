@@ -1,0 +1,60 @@
+name: Badges
+
+# README badges are pre-rendered SVGs on the `badges` branch (one commit, replaced daily): GitHub's
+# image proxy gives shields.io 4 s, and its dynamic badges no longer reliably make it.
+
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  badges:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start the badges branch from nothing
+        run: |
+          git fetch --depth=1 origin badges || true
+          git checkout --orphan badges
+          git rm -rfq .
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Render the downloads and release badge of each plugin
+        run: |
+          node --input-type=module -e '
+            import { writeFileSync } from "node:fs";
+            const get = async (url, as) => {
+              for (let attempt = 1; ; attempt++) {
+                const res = await fetch(url).catch((e) => ({ ok: false, statusText: e.message }));
+                if (res.ok) return as === "json" ? res.json() : res.text();
+                if (attempt === 5) throw new Error(`${url}: ${res.status ?? ""} ${res.statusText}`);
+                await new Promise((r) => setTimeout(r, 3000 * attempt));
+              }
+            };
+            const badge = (label, message, extra = "") =>
+              get(`https://img.shields.io/badge/${label}-${encodeURIComponent(message.replace(/-/g, "--"))}-7c3aed${extra}`);
+            const stats = await get("https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json", "json");
+            for (const p of ["code", "glossary", "heading", "reference"]) {
+              const id = `${p}-linker`;
+              const downloads = stats[id]?.downloads;
+              if (!Number.isInteger(downloads)) throw new Error(`no download count for ${id}`);
+              const { version } = await get(`https://raw.githubusercontent.com/max-fluff/obsidian-${id}/main/manifest.json`, "json");
+              writeFileSync(`${id}-downloads.svg`, await badge("downloads", String(downloads), "?logo=obsidian"));
+              writeFileSync(`${id}-release.svg`, await badge("release", `v${version}`));
+            }
+          '
+
+      - name: Replace the branch if a badge changed
+        run: |
+          git add -A
+          if git rev-parse -q --verify origin/badges >/dev/null && git diff --cached --quiet origin/badges; then exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "Badges"
+          git push --force origin badges
