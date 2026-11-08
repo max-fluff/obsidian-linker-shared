@@ -6,9 +6,9 @@ const en = require('../../morphology/languages/en');
 const la = require('../../morphology/languages/la');
 const el = require('../../morphology/languages/el');
 
-const links = (lang, a, b) => {
-  const ka = lang.keys(a, 'stemmer');
-  const kb = lang.keys(b, 'stemmer');
+const links = (lang, a, b, mode = 'stemmer') => {
+  const ka = lang.keys(a, mode);
+  const kb = lang.keys(b, mode);
   return ka.some((k) => kb.includes(k));
 };
 
@@ -17,13 +17,32 @@ describe('en — classical plurals', () => {
     for (const [a, b] of [
       ['cactus', 'cacti'], ['nucleus', 'nuclei'], ['radius', 'radii'], ['fungus', 'fungi'],
       ['datum', 'data'], ['bacterium', 'bacteria'], ['curriculum', 'curricula'],
-      ['phenomenon', 'phenomena'], ['criterion', 'criteria'],
       ['index', 'indices'], ['matrix', 'matrices'], ['appendix', 'appendices'],
       ['corpus', 'corpora'], ['genus', 'genera'],
       ['formula', 'formulae'], ['larva', 'larvae'],
       ['thesis', 'theses'], ['hypothesis', 'hypotheses'], ['analysis', 'analyses'],
       ['schema', 'schemata'],
     ]) assert.ok(links(en, a, b), `${a} ~ ${b}`);
+  });
+
+  it('links Greek -on nouns to their -a plural, stemming or stripping', () => {
+    for (const [a, b] of [
+      ['Mitochondrion', 'mitochondria'], ['criterion', 'criteria'], ['phenomenon', 'phenomena'],
+      ['automaton', 'automata'], ['ganglion', 'ganglia'], ['taxon', 'taxa'],
+      ['noumenon', 'noumena'], ['prolegomenon', 'prolegomena'],
+      ['aphelion', 'aphelia'], ['perihelion', 'perihelia'],
+      ['polyhedron', 'polyhedra'], ['tetrahedron', 'tetrahedra'], ['icosahedron', 'icosahedra'],
+    ]) {
+      assert.ok(links(en, a, b), `${a} ~ ${b}`);
+      assert.ok(links(en, a, b, 'endingStrip'), `${a} ~ ${b} (endingStrip)`);
+    }
+  });
+
+  it('gives an -a word an -on key only from the table, so cola never reaches colon', () => {
+    for (const [a, b] of [
+      ['cola', 'colon'], ['opera', 'operon'], ['camera', 'Cameron'], ['carta', 'carton'],
+      ['sala', 'salon'], ['masa', 'mason'], ['data', 'daton'], ['area', 'areon'], ['idea', 'ideon'],
+    ]) assert.ok(!links(en, a, b), `${a} ~ ${b}`);
   });
 
   it('links a regular -es plural of an -ix word too', () => {

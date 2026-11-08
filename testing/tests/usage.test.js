@@ -2,6 +2,7 @@
 
 const { describe, it, assert } = require('../harness');
 const { createUsageCache, foldUsageInto, scanCandidateWords, aggregateCandidates } = require('../../prose/usage');
+const en = require('../../morphology/languages/en');
 
 const file = (path, mtime) => ({ path, stat: { mtime } });
 
@@ -107,7 +108,7 @@ describe('scanCandidateWords', () => {
 });
 
 describe('aggregateCandidates', () => {
-  const perNote = (map) => ({ value: new Map(Object.entries(map).map(([l, c]) => [l, { forms: new Map([[l, c]]), total: c }])) });
+  const perNote = (map) => ({ value: new Map(Object.entries(map).map(([l, c]) => [l, { forms: new Map([[l, c]]), total: c, keys: new Set([l]) }])) });
 
   it('keeps a lemma only once it spans minNotes notes, ranked by spread then total', () => {
     const results = [perNote({ wide: 1, rare: 5 }), perNote({ wide: 1 }), perNote({ wide: 1 })];
@@ -115,6 +116,31 @@ describe('aggregateCandidates', () => {
     assert.deepStrictEqual(out.map((c) => c.lemma), ['wide'], 'rare appears in one note, below minNotes');
     assert.strictEqual(out[0].docFreq, 3);
     assert.strictEqual(out[0].count, 3);
+  });
+
+  const enPlugin = (text) => ({ ...scanPlugin(text), keysFor: (w) => en.keys(w, 'stemmer'), lemmaFor: en.lemma });
+  const scanAll = (texts) => Promise.all(texts.map(async (t) => ({ value: await scanCandidateWords(enPlugin(t), {}, 2, () => false) })));
+
+  it('joins forms the matcher would join, though lemma() reads them apart', async () => {
+    const out = aggregateCandidates(await scanAll(['tetrahedron', 'tetrahedra', 'dormouse', 'dormice']), 2);
+    const tetra = out.find((c) => c.lemma === 'tetrahedron');
+    const dormouse = out.find((c) => c.lemma === 'dormous');
+    assert.ok(tetra && tetra.docFreq === 2 && tetra.count === 2, 'tetrahedron + tetrahedra');
+    assert.deepStrictEqual(tetra.forms.slice().sort(), ['tetrahedra', 'tetrahedron']);
+    assert.ok(dormouse && dormouse.docFreq === 2 && dormouse.count === 2, 'dormouse + dormice');
+  });
+
+  it('counts a note once when two of its lemmas join', async () => {
+    const out = aggregateCandidates(await scanAll(['dormice and a dormouse']), 1);
+    const mice = out.filter((c) => /^dorm/.test(c.lemma));
+    assert.strictEqual(mice.length, 1);
+    assert.strictEqual(mice[0].docFreq, 1);
+    assert.strictEqual(mice[0].count, 2);
+  });
+
+  it('leaves apart words that share no key', async () => {
+    const out = aggregateCandidates(await scanAll(['police lice mouse']), 1);
+    assert.deepStrictEqual(out.map((c) => c.lemma).sort(), ['louse', 'mouse', 'polic']);
   });
 
   it('caps the list at 100', () => {

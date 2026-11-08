@@ -48,7 +48,7 @@ function foldUsageInto(counts, results) {
 
 // Read one note for the candidate scan: how often each surface word's lemma appears, with
 // the forms behind it, skipping numbers, protected spans and words `isTermWord(keys, raw)`
-// claims (already a term, or excluded). Returns lemma -> { forms: Map<surface, count>, total }.
+// claims (already a term, or excluded). Returns lemma -> { forms: Map<surface, count>, total, keys }.
 async function scanCandidateWords(plugin, file, minLen, isTermWord) {
   const here = new Map();
   let text;
@@ -58,37 +58,58 @@ async function scanCandidateWords(plugin, file, minLen, isTermWord) {
     const raw = m[0];
     if (/^\p{Nd}+$/u.test(raw)) continue;
     if (plugin.overlapsProtected(protect, m.index, m.index + raw.length)) continue;
-    if (isTermWord(plugin.keysFor(raw), raw)) continue;
+    const keys = plugin.keysFor(raw);
+    if (isTermWord(keys, raw)) continue;
     const lemma = plugin.lemmaFor(raw);
     if (lemma.length < minLen) continue;
     let g = here.get(lemma);
-    if (!g) { g = { forms: new Map(), total: 0 }; here.set(lemma, g); }
+    if (!g) { g = { forms: new Map(), total: 0, keys: new Set() }; here.set(lemma, g); }
     g.forms.set(raw, (g.forms.get(raw) || 0) + 1);
     g.total++;
+    for (const k of keys) g.keys.add(k);
   }
   return here;
 }
 
-// Merge per-note candidate scans into a ranked list: a lemma kept when it appears in at
-// least minNotes notes, shown under its commonest surface form, ordered by note-spread then
-// total. Top 100. `results` is what a candidate cache run returns.
+// Lemmas whose words share a key join one candidate, as the matcher joins them into one term:
+// lemma() cannot see that dormice is dormouse.
 function aggregateCandidates(results, minNotes) {
-  const groups = new Map(); // lemma -> { forms, total, docFreq }
-  for (const { value: here } of results) {
+  const groups = new Map(); // lemma -> { forms, total, notes }
+  const parent = new Map();
+  const root = (l) => {
+    while (parent.get(l) !== l) { parent.set(l, parent.get(parent.get(l))); l = parent.get(l); }
+    return l;
+  };
+  const ownerOfKey = new Map();
+  results.forEach(({ value: here }, note) => {
     for (const [lemma, g] of here) {
       let all = groups.get(lemma);
-      if (!all) { all = { forms: new Map(), total: 0, docFreq: 0 }; groups.set(lemma, all); }
+      if (!all) { all = { forms: new Map(), total: 0, notes: new Set() }; groups.set(lemma, all); parent.set(lemma, lemma); }
       for (const [form, n] of g.forms) all.forms.set(form, (all.forms.get(form) || 0) + n);
       all.total += g.total;
-      all.docFreq++;
+      all.notes.add(note);
+      for (const k of g.keys) {
+        const other = ownerOfKey.get(k);
+        if (other === undefined) ownerOfKey.set(k, lemma);
+        else parent.set(root(lemma), root(other));
+      }
     }
+  });
+  const merged = new Map(); // root lemma -> { forms, total, notes }
+  for (const [lemma, g] of groups) {
+    const r = root(lemma);
+    let m = merged.get(r);
+    if (!m) { m = { forms: new Map(), total: 0, notes: new Set() }; merged.set(r, m); }
+    for (const [form, n] of g.forms) m.forms.set(form, (m.forms.get(form) || 0) + n);
+    m.total += g.total;
+    for (const n of g.notes) m.notes.add(n);
   }
   const out = [];
-  for (const [lemma, g] of groups) {
-    if (g.docFreq < minNotes) continue;
+  for (const [lemma, g] of merged) {
+    if (g.notes.size < minNotes) continue;
     let display = lemma, best = -1;
     for (const [form, n] of g.forms) if (n > best) { best = n; display = form; }
-    out.push({ lemma, display, count: g.total, docFreq: g.docFreq });
+    out.push({ lemma, display, forms: [...g.forms.keys()], count: g.total, docFreq: g.notes.size });
   }
   out.sort((a, b) => b.docFreq - a.docFreq || b.count - a.count);
   return out.slice(0, 100);
