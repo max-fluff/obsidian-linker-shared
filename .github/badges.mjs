@@ -1,4 +1,5 @@
-// Renders each plugin's downloads and release badge as a flat SVG into the directory given as argv[2].
+// Renders each plugin's downloads and release badge, plus the family's total downloads, as flat SVGs
+// into the directory given as argv[2].
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -49,10 +50,13 @@ async function getJson(url) {
 const out = process.argv[2];
 mkdirSync(out, { recursive: true });
 const stats = await getJson(STATS);
+let total = 0;
 for (const id of PLUGINS) {
   const downloads = stats[id]?.downloads;
   if (!Number.isInteger(downloads)) throw new Error(`no download count for ${id}`);
+  total += downloads;
   const { version } = await getJson(`https://raw.githubusercontent.com/max-fluff/obsidian-${id}/main/manifest.json`);
   writeFileSync(join(out, `${id}-downloads.svg`), badge('downloads', String(downloads), { logo: OBSIDIAN }));
   writeFileSync(join(out, `${id}-release.svg`), badge('release', `v${version}`));
 }
+writeFileSync(join(out, 'total-downloads.svg'), badge('total downloads', String(total), { logo: OBSIDIAN }));
